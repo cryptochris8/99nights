@@ -59,9 +59,10 @@ startServer(async (world) => {
     console.log(`[Server] Player joined: ${player.username} (ID: ${player.id})`);
 
     // Create custom game player entity
-    const playerEntity = new GamePlayerEntity(world);
-    playerEntity.player = player;
-    playerEntity.name = player.username;
+    const playerEntity = new GamePlayerEntity({
+      player,
+      name: player.username,
+    });
 
     // Spawn at the Safe Clearing (0, 10, 0)
     playerEntity.spawn(world, { x: 0, y: 10, z: 0 });

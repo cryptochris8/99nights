@@ -1,4 +1,4 @@
-import { PlayerEntity, World } from 'hytopia';
+import { PlayerEntity, PlayerEntityOptions } from 'hytopia';
 import { InventoryItem, PlayerData, GameEvents } from '../../types/gameTypes';
 import GameManager from '../managers/GameManager';
 
@@ -29,8 +29,8 @@ export default class GamePlayerEntity extends PlayerEntity {
   private healthRegenInterval?: NodeJS.Timeout;
   private staminaRegenInterval?: NodeJS.Timeout;
 
-  constructor(world: World) {
-    super(world);
+  constructor(options: PlayerEntityOptions) {
+    super(options);
   }
 
   /**
