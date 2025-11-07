@@ -5,18 +5,19 @@
  * to break the curse and restore the Ancient Grove.
  *
  * Built with Hytopia SDK v0.10.46
- * Phase 1: Core Foundation
+ * Phase 2: Day/Night & World Systems
  */
 
 import {
   startServer,
-  Audio,
   DefaultPlayerEntity,
   PlayerEvent,
 } from 'hytopia';
 
 import worldMap from './assets/maps/map.json';
 import GameManager from './classes/managers/GameManager';
+import TimeManager from './classes/managers/TimeManager';
+import AudioManager from './classes/managers/AudioManager';
 
 /**
  * Main server entry point
@@ -32,25 +33,16 @@ startServer(async (world) => {
   world.loadMap(worldMap);
   console.log('[Server] Map loaded successfully');
 
-  // Initialize GameManager (Phase 1)
+  // Initialize managers
   console.log('[Server] Initializing GameManager...');
   await GameManager.instance.initialize(world);
 
-  // Set up initial lighting (morning/day time)
-  console.log('[Server] Configuring lighting...');
-  world.setAmbientLightIntensity(0.7);
-  world.setAmbientLightColor({ r: 255, g: 245, b: 220 }); // Warm daylight
-  world.setDirectionalLightIntensity(0.8);
-  world.setDirectionalLightPosition({ x: 100, y: 200, z: 100 }); // Sun position
+  console.log('[Server] Initializing TimeManager...');
+  TimeManager.instance.initialize(world);
 
-  // Play ambient forest music
-  console.log('[Server] Starting ambient music...');
-  const forestMusic = new Audio({
-    uri: 'audio/music/hytopia-main-theme.mp3',
-    loop: true,
-    volume: 0.3,
-  });
-  forestMusic.play(world);
+  console.log('[Server] Initializing AudioManager...');
+  AudioManager.instance.initialize(world);
+  AudioManager.instance.start(); // Start background music
 
   /**
    * Player Join Handler
@@ -131,22 +123,32 @@ startServer(async (world) => {
 
     console.log(`[Server] Game started by ${player.username}`);
     GameManager.instance.startGame();
+
+    // Start the day/night cycle
+    TimeManager.instance.start();
   });
 
   // Show game status
   world.chatManager.registerCommand('/status', (player) => {
     const state = GameManager.instance.gameState;
+    const timeRemaining = TimeManager.instance.getTimeRemainingInPhase();
+    const cycleProgress = Math.floor(TimeManager.instance.getCycleProgress() * 100);
+
     world.chatManager.sendPlayerMessage(player, '📊 Game Status:', 'FFFF00');
     world.chatManager.sendPlayerMessage(player, `   Started: ${state.isStarted ? 'Yes' : 'No'}`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Night: ${state.currentNight}/99`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Phase: ${state.currentPhase}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Time in phase: ${timeRemaining}s remaining`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Cycle progress: ${cycleProgress}%`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Camp Level: ${state.campLevel}`, 'FFFFFF');
   });
 
   // Reset game (dev/testing)
   world.chatManager.registerCommand('/reset', (player) => {
     console.log(`[Server] Game reset by ${player.username}`);
+    TimeManager.instance.stop();
     GameManager.instance.resetGame();
+    AudioManager.instance.switchMusic('day');
     world.chatManager.sendBroadcastMessage('🔄 Game has been reset', 'FFAA00');
   });
 
@@ -156,6 +158,8 @@ startServer(async (world) => {
     world.chatManager.sendPlayerMessage(player, '   /start - Start the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /status - Show game status', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /reset - Reset the game', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /time - Show time info', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /skipphase - Skip to next phase (dev)', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /debug - Toggle debug info', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /testdata - Test JSON data loading', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /rocket - Launch into the air (fun!)', 'FFFFFF');
@@ -193,17 +197,51 @@ startServer(async (world) => {
     }
   });
 
+  // Time info command
+  world.chatManager.registerCommand('/time', (player) => {
+    const currentPhase = TimeManager.instance.getCurrentPhase();
+    const timeRemaining = TimeManager.instance.getTimeRemainingInPhase();
+    const cycleProgress = Math.floor(TimeManager.instance.getCycleProgress() * 100);
+    const nightNumber = GameManager.instance.gameState.currentNight;
+    const musicState = AudioManager.instance.getCurrentState();
+
+    world.chatManager.sendPlayerMessage(player, '⏰ Time Info:', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, `   Current Phase: ${currentPhase}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Time Remaining: ${timeRemaining}s`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Cycle Progress: ${cycleProgress}%`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Night: ${nightNumber}/99`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Music: ${musicState}`, 'FFFFFF');
+  });
+
+  // Skip phase command (dev/testing)
+  world.chatManager.registerCommand('/skipphase', (player) => {
+    if (!GameManager.instance.gameState.isStarted) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Game not started! Use /start first', 'FF0000');
+      return;
+    }
+
+    const oldPhase = TimeManager.instance.getCurrentPhase();
+    TimeManager.instance.skipToNextPhase();
+    const newPhase = TimeManager.instance.getCurrentPhase();
+
+    // Update music for new phase
+    AudioManager.instance.updateMusicForPhase(newPhase);
+
+    world.chatManager.sendPlayerMessage(player, `⏩ Skipped: ${oldPhase} → ${newPhase}`, 'FFFF00');
+  });
+
   // Debug command
   world.chatManager.registerCommand('/debug', (player) => {
     const state = GameManager.instance.gameState;
     const playerCount = world.entityManager.getAllPlayerEntities().length;
     const entityCount = world.entityManager.getEntities().length;
+    const currentPhase = TimeManager.instance.getCurrentPhase();
 
     world.chatManager.sendPlayerMessage(player, '🐛 Debug Info:', 'FF00FF');
     world.chatManager.sendPlayerMessage(player, `   Players: ${playerCount}`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Total Entities: ${entityCount}`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Night: ${state.currentNight}`, 'FFFFFF');
-    world.chatManager.sendPlayerMessage(player, `   Phase: ${state.currentPhase}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Phase: ${currentPhase}`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Camp Level: ${state.campLevel}`, 'FFFFFF');
   });
 
