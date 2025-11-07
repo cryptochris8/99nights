@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tar:*)",
+      "Bash(powershell -Command \"Expand-Archive -Path ''99-nights-docs.zip'' -DestinationPath ''99-nights-docs'' -Force\")",
+      "Bash(powershell -Command \"(Get-Content ''C:\\Users\\chris\\99-Nights\\assets\\maps\\ninety9-nights.json'' | Measure-Object -Line).Lines\")",
+      "Bash(powershell -Command \"(Get-Item ''C:\\Users\\chris\\99-Nights\\assets\\maps\\ninety9-nights.json'').Length / 1KB\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\Users\\chris\\99-Nights\\assets\\maps\\ninety9-nights.json'' | Select-Object -Last 50\")",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "hytopia-mcp"
+  ]
+}
