@@ -157,7 +157,40 @@ startServer(async (world) => {
     world.chatManager.sendPlayerMessage(player, '   /status - Show game status', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /reset - Reset the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /debug - Toggle debug info', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /testdata - Test JSON data loading', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /rocket - Launch into the air (fun!)', 'FFFFFF');
+  });
+
+  // Test data loading command
+  world.chatManager.registerCommand('/testdata', async (player) => {
+    world.chatManager.sendPlayerMessage(player, '🧪 Testing Data Loading...', 'FF00FF');
+
+    try {
+      // Test items
+      const items = await import('./config/items.json');
+      const itemCount = Object.keys(items.default || items).length;
+      world.chatManager.sendPlayerMessage(player, `   ✅ Items: ${itemCount} loaded`, '00FF00');
+
+      // Test recipes
+      const recipes = await import('./config/recipes.json');
+      const recipeCount = Object.keys(recipes.default || recipes).length;
+      world.chatManager.sendPlayerMessage(player, `   ✅ Recipes: ${recipeCount} loaded`, '00FF00');
+
+      // Test enemies
+      const enemies = await import('./config/enemies.json');
+      const enemyCount = Object.keys(enemies.default || enemies).length;
+      world.chatManager.sendPlayerMessage(player, `   ✅ Enemies: ${enemyCount} loaded`, '00FF00');
+
+      // Test zones
+      const zones = await import('./config/zones.json');
+      const zoneCount = Object.keys(zones.default || zones).length;
+      world.chatManager.sendPlayerMessage(player, `   ✅ Zones: ${zoneCount} loaded`, '00FF00');
+
+      world.chatManager.sendPlayerMessage(player, '✅ All data loaded successfully!', '00FF00');
+    } catch (error) {
+      world.chatManager.sendPlayerMessage(player, `   ❌ Error loading data: ${error}`, 'FF0000');
+      console.error('[TestData] Error:', error);
+    }
   });
 
   // Debug command
