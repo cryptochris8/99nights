@@ -62,6 +62,8 @@ startServer(async (world) => {
     const playerEntity = new GamePlayerEntity({
       player,
       name: player.username,
+      modelUri: 'models/players/player.gltf',
+      modelScale: 0.5,
     });
 
     // Spawn at the Safe Clearing (0, 10, 0)
