@@ -17,10 +17,8 @@ export enum DayPhase {
 }
 
 export interface InventoryItem {
-  id: string;
-  name: string;
-  stackSize: number;
-  maxStack: number;
+  itemId: string;
+  quantity: number;
 }
 
 export interface PlayerData {
@@ -58,6 +56,7 @@ export interface RecipeConfig {
   inputs: { itemId: string; quantity: number }[];
   output: { itemId: string; quantity: number };
   craftTime: number;
+  placeable?: boolean;
 }
 
 export interface RuneConfig {
@@ -87,13 +86,16 @@ export interface ZoneConfig {
 }
 
 // Manager events (custom events)
-export enum GameEvent {
+export enum GameEvents {
   NIGHT_START = 'game:night_start',
   NIGHT_END = 'game:night_end',
   PHASE_CHANGE = 'game:phase_change',
   WAVE_START = 'game:wave_start',
-  ITEM_CRAFTED = 'game:item_crafted',
+  CRAFT_START = 'game:craft_start',
+  CRAFT_COMPLETE = 'game:craft_complete',
   ENEMY_KILLED = 'game:enemy_killed',
   PLAYER_DEATH = 'game:player_death',
+  PLAYER_SPAWN = 'game:player_spawn',
+  PLAYER_LEVEL_UP = 'game:player_level_up',
   CAMP_UPGRADED = 'game:camp_upgraded',
 }

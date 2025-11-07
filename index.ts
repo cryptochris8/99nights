@@ -5,12 +5,11 @@
  * to break the curse and restore the Ancient Grove.
  *
  * Built with Hytopia SDK v0.10.46
- * Phase 2: Day/Night & World Systems
+ * Phase 3: Player Systems
  */
 
 import {
   startServer,
-  DefaultPlayerEntity,
   PlayerEvent,
 } from 'hytopia';
 
@@ -18,6 +17,9 @@ import worldMap from './assets/maps/map.json';
 import GameManager from './classes/managers/GameManager';
 import TimeManager from './classes/managers/TimeManager';
 import AudioManager from './classes/managers/AudioManager';
+import InventoryManager from './classes/managers/InventoryManager';
+import CraftingManager from './classes/managers/CraftingManager';
+import GamePlayerEntity from './classes/entities/GamePlayerEntity';
 
 /**
  * Main server entry point
@@ -44,58 +46,28 @@ startServer(async (world) => {
   AudioManager.instance.initialize(world);
   AudioManager.instance.start(); // Start background music
 
+  console.log('[Server] Initializing InventoryManager...');
+  InventoryManager.instance.initialize(world);
+
+  console.log('[Server] Initializing CraftingManager...');
+  CraftingManager.instance.initialize(world);
+
   /**
    * Player Join Handler
    */
   world.on(PlayerEvent.JOINED_WORLD, ({ player }) => {
     console.log(`[Server] Player joined: ${player.username} (ID: ${player.id})`);
 
-    // Create player entity
-    const playerEntity = new DefaultPlayerEntity({
-      player,
-      name: player.username,
-    });
+    // Create custom game player entity
+    const playerEntity = new GamePlayerEntity(world);
+    playerEntity.player = player;
+    playerEntity.name = player.username;
 
     // Spawn at the Safe Clearing (0, 10, 0)
     playerEntity.spawn(world, { x: 0, y: 10, z: 0 });
 
     // Load game UI
     player.ui.load('ui/index.html');
-
-    // Welcome messages
-    world.chatManager.sendPlayerMessage(player, '='.repeat(50), 'FFFFFF');
-    world.chatManager.sendPlayerMessage(player, '🌲 Welcome to 99 Nights in the Forest! 🌲', '00FF00');
-    world.chatManager.sendPlayerMessage(player, '='.repeat(50), 'FFFFFF');
-    world.chatManager.sendPlayerMessage(player, '');
-    world.chatManager.sendPlayerMessage(player, '📖 The Ancient Grove is cursed...', 'FFFF00');
-    world.chatManager.sendPlayerMessage(player, '🌙 Survive 99 nights to break the seal', 'FFFF00');
-    world.chatManager.sendPlayerMessage(player, '⚔️  Fight corrupted creatures of the night', 'FFFF00');
-    world.chatManager.sendPlayerMessage(player, '🛠️  Gather resources and craft defenses', 'FFFF00');
-    world.chatManager.sendPlayerMessage(player, '');
-    world.chatManager.sendPlayerMessage(player, '💡 Controls:', 'FFFFFF');
-    world.chatManager.sendPlayerMessage(player, '   WASD - Move', 'CCCCCC');
-    world.chatManager.sendPlayerMessage(player, '   Space - Jump', 'CCCCCC');
-    world.chatManager.sendPlayerMessage(player, '   Shift - Sprint', 'CCCCCC');
-    world.chatManager.sendPlayerMessage(player, '   \\ - Debug view', 'CCCCCC');
-    world.chatManager.sendPlayerMessage(player, '');
-    world.chatManager.sendPlayerMessage(player, '🎮 Type /help for commands', 'FFFFFF');
-    world.chatManager.sendPlayerMessage(player, '='.repeat(50), 'FFFFFF');
-
-    // Show current game state
-    const state = GameManager.instance.gameState;
-    if (state.isStarted) {
-      world.chatManager.sendPlayerMessage(
-        player,
-        `⏰ Game in progress - Night ${state.currentNight} (${state.currentPhase})`,
-        'FFAA00'
-      );
-    } else {
-      world.chatManager.sendPlayerMessage(
-        player,
-        '⏸️  Game not started - Type /start to begin your journey',
-        'FFAA00'
-      );
-    }
   });
 
   /**
@@ -157,6 +129,11 @@ startServer(async (world) => {
     world.chatManager.sendPlayerMessage(player, '📖 Available Commands:', 'FFFF00');
     world.chatManager.sendPlayerMessage(player, '   /start - Start the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /status - Show game status', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /stats - Show player stats', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /inventory (/inv) - Show inventory', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /recipes - List all recipes', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /craft <recipe_id> - Craft an item', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /gather <item> <amount> - Gather resource (dev)', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /reset - Reset the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /time - Show time info', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /skipphase - Skip to next phase (dev)', 'FFFFFF');
@@ -251,6 +228,128 @@ startServer(async (world) => {
       entity.applyImpulse({ x: 0, y: 20, z: 0 });
     });
     world.chatManager.sendPlayerMessage(player, '🚀 Wheeeee!', 'FF0000');
+  });
+
+  /**
+   * Player-specific Commands (Phase 3)
+   */
+
+  // Show player stats
+  world.chatManager.registerCommand('/stats', (player) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    const stats = playerEntity.getStatsString();
+    world.chatManager.sendPlayerMessage(player, stats, 'FFFFFF');
+  });
+
+  // Show inventory
+  world.chatManager.registerCommand('/inventory', (player) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    const inventoryString = InventoryManager.instance.getInventoryString(playerEntity);
+    world.chatManager.sendPlayerMessage(player, inventoryString, 'FFFFFF');
+  });
+
+  // Alias for /inventory
+  world.chatManager.registerCommand('/inv', (player) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    const inventoryString = InventoryManager.instance.getInventoryString(playerEntity);
+    world.chatManager.sendPlayerMessage(player, inventoryString, 'FFFFFF');
+  });
+
+  // List all recipes
+  world.chatManager.registerCommand('/recipes', (player) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    const recipesString = CraftingManager.instance.getAvailableRecipesString(playerEntity);
+    world.chatManager.sendPlayerMessage(player, recipesString, 'FFFFFF');
+  });
+
+  // Craft an item
+  world.chatManager.registerCommand('/craft', (player, args) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    if (args.length === 0) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Usage: /craft <recipe_id>', 'FF0000');
+      world.chatManager.sendPlayerMessage(player, '💡 Use /recipes to see available recipes', 'FFAA00');
+      return;
+    }
+
+    const recipeId = args[0];
+    const success = CraftingManager.instance.tryCraft(playerEntity, recipeId);
+
+    if (!success) {
+      // Error messages are handled by CraftingManager
+      return;
+    }
+  });
+
+  // Gather resource (dev/testing command)
+  world.chatManager.registerCommand('/gather', (player, args) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    if (args.length < 2) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Usage: /gather <item_id> <amount>', 'FF0000');
+      world.chatManager.sendPlayerMessage(player, '💡 Example: /gather wood 10', 'FFAA00');
+      return;
+    }
+
+    const itemId = args[0];
+    const amount = parseInt(args[1]);
+
+    if (isNaN(amount) || amount <= 0) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Amount must be a positive number', 'FF0000');
+      return;
+    }
+
+    // Check if item exists
+    const itemConfig = GameManager.instance.itemsConfig[itemId];
+    if (!itemConfig) {
+      world.chatManager.sendPlayerMessage(player, `❌ Unknown item: ${itemId}`, 'FF0000');
+      return;
+    }
+
+    // Add to inventory
+    const added = playerEntity.addItemToInventory(itemId, amount);
+
+    if (added) {
+      world.chatManager.sendPlayerMessage(
+        player,
+        `✅ Gathered ${amount}x ${itemConfig.name}`,
+        '00FF00'
+      );
+    } else {
+      world.chatManager.sendPlayerMessage(
+        player,
+        '❌ Inventory full!',
+        'FF0000'
+      );
+    }
   });
 
   console.log('='.repeat(60));
