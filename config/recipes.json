@@ -1,0 +1,51 @@
+{
+  "craft_torch": {
+    "id": "craft_torch",
+    "name": "Craft Torch",
+    "inputs": [
+      { "itemId": "wood", "quantity": 2 }
+    ],
+    "output": { "itemId": "torch", "quantity": 1 },
+    "craftTime": 2000
+  },
+  "craft_ward_totem_t1": {
+    "id": "craft_ward_totem_t1",
+    "name": "Craft Ward Totem (Basic)",
+    "inputs": [
+      { "itemId": "wood", "quantity": 5 },
+      { "itemId": "stone", "quantity": 3 },
+      { "itemId": "rune_dust", "quantity": 2 }
+    ],
+    "output": { "itemId": "ward_totem_t1", "quantity": 1 },
+    "craftTime": 5000
+  },
+  "craft_wooden_sword": {
+    "id": "craft_wooden_sword",
+    "name": "Craft Wooden Sword",
+    "inputs": [
+      { "itemId": "wood", "quantity": 8 },
+      { "itemId": "stone", "quantity": 2 }
+    ],
+    "output": { "itemId": "wooden_sword", "quantity": 1 },
+    "craftTime": 3000
+  },
+  "craft_healing_potion": {
+    "id": "craft_healing_potion",
+    "name": "Craft Healing Potion",
+    "inputs": [
+      { "itemId": "herb_glowcap", "quantity": 3 }
+    ],
+    "output": { "itemId": "healing_potion", "quantity": 1 },
+    "craftTime": 2500
+  },
+  "craft_campfire": {
+    "id": "craft_campfire",
+    "name": "Build Campfire",
+    "inputs": [
+      { "itemId": "wood", "quantity": 10 },
+      { "itemId": "stone", "quantity": 5 }
+    ],
+    "output": { "itemId": "campfire", "quantity": 1 },
+    "craftTime": 4000
+  }
+}

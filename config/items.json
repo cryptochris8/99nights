@@ -1,0 +1,65 @@
+{
+  "wood": {
+    "id": "wood",
+    "name": "Wood",
+    "type": "resource",
+    "maxStack": 99,
+    "description": "Basic wood gathered from trees"
+  },
+  "stone": {
+    "id": "stone",
+    "name": "Stone",
+    "type": "resource",
+    "maxStack": 99,
+    "description": "Stone gathered from rocks"
+  },
+  "herb_glowcap": {
+    "id": "herb_glowcap",
+    "name": "Glowcap Mushroom",
+    "type": "herb",
+    "maxStack": 20,
+    "description": "A mystical glowing mushroom with healing properties"
+  },
+  "rune_dust": {
+    "id": "rune_dust",
+    "name": "Rune Dust",
+    "type": "resource",
+    "maxStack": 50,
+    "description": "Magical dust used to craft runes"
+  },
+  "torch": {
+    "id": "torch",
+    "name": "Torch",
+    "type": "tool",
+    "maxStack": 10,
+    "description": "Provides light in the darkness"
+  },
+  "ward_totem_t1": {
+    "id": "ward_totem_t1",
+    "name": "Ward Totem (Basic)",
+    "type": "tool",
+    "maxStack": 5,
+    "description": "A protective totem that weakens nearby enemies"
+  },
+  "campfire": {
+    "id": "campfire",
+    "name": "Campfire",
+    "type": "tool",
+    "maxStack": 1,
+    "description": "A central campfire for cooking and warmth"
+  },
+  "wooden_sword": {
+    "id": "wooden_sword",
+    "name": "Wooden Sword",
+    "type": "weapon",
+    "maxStack": 1,
+    "description": "A basic wooden sword for combat"
+  },
+  "healing_potion": {
+    "id": "healing_potion",
+    "name": "Healing Potion",
+    "type": "consumable",
+    "maxStack": 5,
+    "description": "Restores health when consumed"
+  }
+}

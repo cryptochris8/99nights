@@ -1,0 +1,46 @@
+{
+  "wispling": {
+    "id": "wispling",
+    "name": "Wispling",
+    "modelUri": "models/enemies/wisp.gltf",
+    "health": 20,
+    "speed": 2.5,
+    "damage": 5,
+    "minNight": 1,
+    "xpReward": 10,
+    "lootTable": "wispling_basic"
+  },
+  "feral_sprout": {
+    "id": "feral_sprout",
+    "name": "Feral Sprout",
+    "modelUri": "models/enemies/sprout.gltf",
+    "health": 35,
+    "speed": 1.8,
+    "damage": 8,
+    "minNight": 3,
+    "xpReward": 20,
+    "lootTable": "sprout_loot"
+  },
+  "shadow_wolf": {
+    "id": "shadow_wolf",
+    "name": "Shadow Wolf",
+    "modelUri": "models/enemies/wolf.gltf",
+    "health": 50,
+    "speed": 4.0,
+    "damage": 15,
+    "minNight": 7,
+    "xpReward": 35,
+    "lootTable": "wolf_loot"
+  },
+  "hollow_stag": {
+    "id": "hollow_stag",
+    "name": "Hollow Stag",
+    "modelUri": "models/enemies/stag.gltf",
+    "health": 150,
+    "speed": 3.0,
+    "damage": 25,
+    "minNight": 10,
+    "xpReward": 100,
+    "lootTable": "boss_loot"
+  }
+}

@@ -1,26 +1,11 @@
 /**
- * HYTOPIA SDK Boilerplate
- * 
- * This is a simple boilerplate to get started on your project.
- * It implements the bare minimum to be able to run and connect
- * to your game server and run around as the basic player entity.
- * 
- * From here you can begin to implement your own game logic
- * or do whatever you want!
- * 
- * You can find documentation here: https://github.com/hytopiagg/sdk/blob/main/docs/server.md
- * 
- * For more in-depth examples, check out the examples folder in the SDK, or you
- * can find it directly on GitHub: https://github.com/hytopiagg/sdk/tree/main/examples/payload-game
- * 
- * You can officially report bugs or request features here: https://github.com/hytopiagg/sdk/issues
- * 
- * To get help, have found a bug, or want to chat with
- * other HYTOPIA devs, join our Discord server:
- * https://discord.gg/DXCXJbHSJX
- * 
- * Official SDK Github repo: https://github.com/hytopiagg/sdk
- * Official SDK NPM Package: https://www.npmjs.com/package/hytopia
+ * 99 Nights in the Forest
+ *
+ * A mythic-cozy survival adventure where players must survive 99 nights
+ * to break the curse and restore the Ancient Grove.
+ *
+ * Built with Hytopia SDK v0.10.46
+ * Phase 1: Core Foundation
  */
 
 import {
@@ -31,107 +16,174 @@ import {
 } from 'hytopia';
 
 import worldMap from './assets/maps/map.json';
+import GameManager from './classes/managers/GameManager';
 
 /**
- * startServer is always the entry point for our game.
- * It accepts a single function where we should do any
- * setup necessary for our game. The init function is
- * passed a World instance which is the default
- * world created by the game server on startup.
- * 
- * Documentation: https://github.com/hytopiagg/sdk/blob/main/docs/server.startserver.md
+ * Main server entry point
+ * Initializes the game world, managers, and event handlers
  */
+startServer(async (world) => {
+  console.log('='.repeat(60));
+  console.log('🌲 99 Nights in the Forest - Server Starting');
+  console.log('='.repeat(60));
 
-startServer(world => {
-  /**
-   * Enable debug rendering of the physics simulation.
-   * This will overlay lines in-game representing colliders,
-   * rigid bodies, and raycasts. This is useful for debugging
-   * physics-related issues in a development environment.
-   * Enabling this can cause performance issues, which will
-   * be noticed as dropped frame rates and higher RTT times.
-   * It is intended for development environments only and
-   * debugging physics.
-   */
-  
-  // world.simulation.enableDebugRendering(true);
-
-  /**
-   * Load our map.
-   * You can build your own map using https://build.hytopia.com
-   * After building, hit export and drop the .json file in
-   * the assets folder as map.json.
-   */
+  // Load the custom 817k+ block forest map
+  console.log('[Server] Loading custom map...');
   world.loadMap(worldMap);
+  console.log('[Server] Map loaded successfully');
+
+  // Initialize GameManager (Phase 1)
+  console.log('[Server] Initializing GameManager...');
+  await GameManager.instance.initialize(world);
+
+  // Set up initial lighting (morning/day time)
+  console.log('[Server] Configuring lighting...');
+  world.setAmbientLightIntensity(0.7);
+  world.setAmbientLightColor({ r: 255, g: 245, b: 220 }); // Warm daylight
+  world.setDirectionalLightIntensity(0.8);
+  world.setDirectionalLightPosition({ x: 100, y: 200, z: 100 }); // Sun position
+
+  // Play ambient forest music
+  console.log('[Server] Starting ambient music...');
+  const forestMusic = new Audio({
+    uri: 'audio/music/hytopia-main-theme.mp3',
+    loop: true,
+    volume: 0.3,
+  });
+  forestMusic.play(world);
 
   /**
-   * Handle player joining the game. The PlayerEvent.JOINED_WORLD
-   * event is emitted to the world when a new player connects to
-   * the game. From here, we create a basic player
-   * entity instance which automatically handles mapping
-   * their inputs to control their in-game entity and
-   * internally uses our player entity controller.
-   * 
-   * The HYTOPIA SDK is heavily driven by events, you
-   * can find documentation on how the event system works,
-   * here: https://dev.hytopia.com/sdk-guides/events
+   * Player Join Handler
    */
   world.on(PlayerEvent.JOINED_WORLD, ({ player }) => {
+    console.log(`[Server] Player joined: ${player.username} (ID: ${player.id})`);
+
+    // Create player entity
     const playerEntity = new DefaultPlayerEntity({
       player,
-      name: 'Player',
+      name: player.username,
     });
-  
+
+    // Spawn at the Safe Clearing (0, 10, 0)
     playerEntity.spawn(world, { x: 0, y: 10, z: 0 });
 
-    // Load our game UI for this player
+    // Load game UI
     player.ui.load('ui/index.html');
 
-    // Send a nice welcome message that only the player who joined will see ;)
-    world.chatManager.sendPlayerMessage(player, 'Welcome to the game!', '00FF00');
-    world.chatManager.sendPlayerMessage(player, 'Use WASD to move around & space to jump.');
-    world.chatManager.sendPlayerMessage(player, 'Hold shift to sprint.');
-    world.chatManager.sendPlayerMessage(player, 'Random cosmetic items are enabled for testing!');
-    world.chatManager.sendPlayerMessage(player, 'Press \\ to enter or exit debug view.');
+    // Welcome messages
+    world.chatManager.sendPlayerMessage(player, '='.repeat(50), 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '🌲 Welcome to 99 Nights in the Forest! 🌲', '00FF00');
+    world.chatManager.sendPlayerMessage(player, '='.repeat(50), 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '');
+    world.chatManager.sendPlayerMessage(player, '📖 The Ancient Grove is cursed...', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, '🌙 Survive 99 nights to break the seal', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, '⚔️  Fight corrupted creatures of the night', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, '🛠️  Gather resources and craft defenses', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, '');
+    world.chatManager.sendPlayerMessage(player, '💡 Controls:', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   WASD - Move', 'CCCCCC');
+    world.chatManager.sendPlayerMessage(player, '   Space - Jump', 'CCCCCC');
+    world.chatManager.sendPlayerMessage(player, '   Shift - Sprint', 'CCCCCC');
+    world.chatManager.sendPlayerMessage(player, '   \\ - Debug view', 'CCCCCC');
+    world.chatManager.sendPlayerMessage(player, '');
+    world.chatManager.sendPlayerMessage(player, '🎮 Type /help for commands', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '='.repeat(50), 'FFFFFF');
+
+    // Show current game state
+    const state = GameManager.instance.gameState;
+    if (state.isStarted) {
+      world.chatManager.sendPlayerMessage(
+        player,
+        `⏰ Game in progress - Night ${state.currentNight} (${state.currentPhase})`,
+        'FFAA00'
+      );
+    } else {
+      world.chatManager.sendPlayerMessage(
+        player,
+        '⏸️  Game not started - Type /start to begin your journey',
+        'FFAA00'
+      );
+    }
   });
 
   /**
-   * Handle player leaving the game. The PlayerEvent.LEFT_WORLD
-   * event is emitted to the world when a player leaves the game.
-   * Because HYTOPIA is not opinionated on join and
-   * leave game logic, we are responsible for cleaning
-   * up the player and any entities associated with them
-   * after they leave. We can easily do this by 
-   * getting all the known PlayerEntity instances for
-   * the player who left by using our world's EntityManager
-   * instance.
-   * 
-   * The HYTOPIA SDK is heavily driven by events, you
-   * can find documentation on how the event system works,
-   * here: https://dev.hytopia.com/sdk-guides/events
+   * Player Leave Handler
    */
   world.on(PlayerEvent.LEFT_WORLD, ({ player }) => {
-    world.entityManager.getPlayerEntitiesByPlayer(player).forEach(entity => entity.despawn());
+    console.log(`[Server] Player left: ${player.username} (ID: ${player.id})`);
+
+    // Clean up all player entities
+    world.entityManager.getPlayerEntitiesByPlayer(player).forEach(entity => {
+      entity.despawn();
+    });
   });
 
   /**
-   * A silly little easter egg command. When a player types
-   * "/rocket" in the game, they'll get launched into the air!
+   * Chat Commands
    */
-  world.chatManager.registerCommand('/rocket', player => {
+
+  // Start the game
+  world.chatManager.registerCommand('/start', (player) => {
+    if (GameManager.instance.gameState.isStarted) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Game already started!', 'FF0000');
+      return;
+    }
+
+    console.log(`[Server] Game started by ${player.username}`);
+    GameManager.instance.startGame();
+  });
+
+  // Show game status
+  world.chatManager.registerCommand('/status', (player) => {
+    const state = GameManager.instance.gameState;
+    world.chatManager.sendPlayerMessage(player, '📊 Game Status:', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, `   Started: ${state.isStarted ? 'Yes' : 'No'}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Night: ${state.currentNight}/99`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Phase: ${state.currentPhase}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Camp Level: ${state.campLevel}`, 'FFFFFF');
+  });
+
+  // Reset game (dev/testing)
+  world.chatManager.registerCommand('/reset', (player) => {
+    console.log(`[Server] Game reset by ${player.username}`);
+    GameManager.instance.resetGame();
+    world.chatManager.sendBroadcastMessage('🔄 Game has been reset', 'FFAA00');
+  });
+
+  // Help command
+  world.chatManager.registerCommand('/help', (player) => {
+    world.chatManager.sendPlayerMessage(player, '📖 Available Commands:', 'FFFF00');
+    world.chatManager.sendPlayerMessage(player, '   /start - Start the game', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /status - Show game status', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /reset - Reset the game', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /debug - Toggle debug info', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /rocket - Launch into the air (fun!)', 'FFFFFF');
+  });
+
+  // Debug command
+  world.chatManager.registerCommand('/debug', (player) => {
+    const state = GameManager.instance.gameState;
+    const playerCount = world.entityManager.getAllPlayerEntities().length;
+    const entityCount = world.entityManager.getEntities().length;
+
+    world.chatManager.sendPlayerMessage(player, '🐛 Debug Info:', 'FF00FF');
+    world.chatManager.sendPlayerMessage(player, `   Players: ${playerCount}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Total Entities: ${entityCount}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Night: ${state.currentNight}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Phase: ${state.currentPhase}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Camp Level: ${state.campLevel}`, 'FFFFFF');
+  });
+
+  // Rocket command (easter egg)
+  world.chatManager.registerCommand('/rocket', (player) => {
     world.entityManager.getPlayerEntitiesByPlayer(player).forEach(entity => {
       entity.applyImpulse({ x: 0, y: 20, z: 0 });
     });
+    world.chatManager.sendPlayerMessage(player, '🚀 Wheeeee!', 'FF0000');
   });
 
-  /**
-   * Play some peaceful ambient music to
-   * set the mood!
-   */
-  
-  new Audio({
-    uri: 'audio/music/hytopia-main.mp3',
-    loop: true,
-    volume: 0.1,
-  }).play(world);
+  console.log('='.repeat(60));
+  console.log('✅ Server initialized successfully');
+  console.log('🌲 99 Nights in the Forest is ready!');
+  console.log('='.repeat(60));
 });

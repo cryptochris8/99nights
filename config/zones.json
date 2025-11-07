@@ -1,0 +1,32 @@
+{
+  "spawn_clearing": {
+    "id": "spawn_clearing",
+    "name": "Safe Clearing",
+    "center": { "x": 0, "y": 10, "z": 0 },
+    "radius": 15,
+    "spawnPoints": [
+      { "x": 0, "y": 10, "z": 0 },
+      { "x": 5, "y": 10, "z": 5 },
+      { "x": -5, "y": 10, "z": 5 }
+    ]
+  },
+  "crystal_stream": {
+    "id": "crystal_stream",
+    "name": "Crystal Stream",
+    "center": { "x": 50, "y": 8, "z": 20 },
+    "radius": 20,
+    "spawnPoints": [
+      { "x": 50, "y": 8, "z": 20 },
+      { "x": 55, "y": 8, "z": 25 }
+    ]
+  },
+  "whispering_glade": {
+    "id": "whispering_glade",
+    "name": "Whispering Glade",
+    "center": { "x": -40, "y": 12, "z": 30 },
+    "radius": 25,
+    "spawnPoints": [
+      { "x": -40, "y": 12, "z": 30 }
+    ]
+  }
+}
