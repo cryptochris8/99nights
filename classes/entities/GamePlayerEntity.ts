@@ -1,14 +1,14 @@
-import { PlayerEntity, PlayerEntityOptions } from 'hytopia';
+import { DefaultPlayerEntity, DefaultPlayerEntityOptions, DefaultPlayerEntityController } from 'hytopia';
 import { InventoryItem, PlayerData, GameEvents } from '../../types/gameTypes';
 import GameManager from '../managers/GameManager';
 
 /**
  * GamePlayerEntity
  *
- * Custom player entity extending Hytopia's PlayerEntity.
+ * Custom player entity extending Hytopia's DefaultPlayerEntity.
  * Adds inventory, health, stamina, runes, and level progression.
  */
-export default class GamePlayerEntity extends PlayerEntity {
+export default class GamePlayerEntity extends DefaultPlayerEntity {
   // Player stats
   public health: number = 100;
   public maxHealth: number = 100;
@@ -29,8 +29,14 @@ export default class GamePlayerEntity extends PlayerEntity {
   private healthRegenInterval?: NodeJS.Timeout;
   private staminaRegenInterval?: NodeJS.Timeout;
 
-  constructor(options: PlayerEntityOptions) {
+  // Convenience getter for player controller
+  public get playerController(): DefaultPlayerEntityController {
+    return this.controller as DefaultPlayerEntityController;
+  }
+
+  constructor(options: DefaultPlayerEntityOptions) {
     super(options);
+    // DefaultPlayerEntity automatically sets up DefaultPlayerEntityController
   }
 
   /**

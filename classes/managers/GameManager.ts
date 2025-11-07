@@ -1,5 +1,5 @@
 import { World, GameServer, PersistenceManager } from 'hytopia';
-import type { GameState, DayPhase } from '../../types/gameTypes';
+import type { GameState, DayPhase, ItemConfig, RecipeConfig, EnemyConfig, ZoneConfig } from '../../types/gameTypes';
 
 /**
  * GameManager - Singleton managing global game state
@@ -21,6 +21,13 @@ export default class GameManager {
     campLevel: 1,
   };
 
+  // Game configuration data
+  public itemsConfig: Record<string, ItemConfig> = {};
+  public recipesConfig: Record<string, RecipeConfig> = {};
+  public enemiesConfig: Record<string, EnemyConfig> = {};
+  public zonesConfig: Record<string, ZoneConfig> = {};
+  public persistenceManager: PersistenceManager;
+
   private constructor() {
     console.log('[GameManager] Instance created');
   }
@@ -30,11 +37,36 @@ export default class GameManager {
    */
   public async initialize(world: World) {
     this.world = world;
+    this.persistenceManager = PersistenceManager.instance;
     console.log('[GameManager] Initializing...');
+
+    // Load game configuration files
+    try {
+      console.log('[GameManager] Loading config files...');
+
+      const itemsData = await import('../../config/items.json');
+      this.itemsConfig = itemsData.default || itemsData;
+      console.log(`[GameManager] Loaded ${Object.keys(this.itemsConfig).length} items`);
+
+      const recipesData = await import('../../config/recipes.json');
+      this.recipesConfig = recipesData.default || recipesData;
+      console.log(`[GameManager] Loaded ${Object.keys(this.recipesConfig).length} recipes`);
+
+      const enemiesData = await import('../../config/enemies.json');
+      this.enemiesConfig = enemiesData.default || enemiesData;
+      console.log(`[GameManager] Loaded ${Object.keys(this.enemiesConfig).length} enemies`);
+
+      const zonesData = await import('../../config/zones.json');
+      this.zonesConfig = zonesData.default || zonesData;
+      console.log(`[GameManager] Loaded ${Object.keys(this.zonesConfig).length} zones`);
+    } catch (error) {
+      console.error('[GameManager] Failed to load config files:', error);
+      throw new Error('GameManager: Critical error loading config files');
+    }
 
     // Load persisted game state
     try {
-      const savedState = await PersistenceManager.instance.getGlobalData('gameState');
+      const savedState = await this.persistenceManager.getGlobalData('gameState');
       if (savedState) {
         this.gameState = savedState as GameState;
         console.log('[GameManager] Loaded saved game state:', this.gameState);
@@ -58,7 +90,7 @@ export default class GameManager {
     }
 
     try {
-      await PersistenceManager.instance.setGlobalData('gameState', this.gameState);
+      await this.persistenceManager.setGlobalData('gameState', this.gameState);
       console.log('[GameManager] Game state saved:', this.gameState);
     } catch (error) {
       console.error('[GameManager] Failed to save game state:', error);

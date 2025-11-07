@@ -63,11 +63,15 @@ startServer(async (world) => {
       player,
       name: player.username,
       modelUri: 'models/players/player.gltf',
-      modelScale: 0.5,
+      modelScale: 0.5, // Hytopia standard (~1.5 blocks tall)
     });
 
     // Spawn at the Safe Clearing (0, 10, 0)
     playerEntity.spawn(world, { x: 0, y: 10, z: 0 });
+
+    // Setup third-person camera (default mode)
+    // Camera offset positions the view at upper body/head level
+    player.camera.setOffset({ x: 0, y: 0.8, z: 0 });
 
     // Load game UI
     player.ui.load('ui/index.html');
