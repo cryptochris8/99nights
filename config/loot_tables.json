@@ -1,0 +1,82 @@
+{
+  "wispling_basic": {
+    "id": "wispling_basic",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 1,
+        "maxQuantity": 2,
+        "chance": 0.5
+      },
+      {
+        "itemId": "wood",
+        "minQuantity": 1,
+        "maxQuantity": 3,
+        "chance": 0.3
+      }
+    ]
+  },
+  "sprout_loot": {
+    "id": "sprout_loot",
+    "drops": [
+      {
+        "itemId": "herb_glowcap",
+        "minQuantity": 1,
+        "maxQuantity": 2,
+        "chance": 0.6
+      },
+      {
+        "itemId": "wood",
+        "minQuantity": 2,
+        "maxQuantity": 4,
+        "chance": 0.4
+      },
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 1,
+        "maxQuantity": 1,
+        "chance": 0.3
+      }
+    ]
+  },
+  "wolf_loot": {
+    "id": "wolf_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 2,
+        "maxQuantity": 4,
+        "chance": 0.7
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 3,
+        "maxQuantity": 6,
+        "chance": 0.5
+      }
+    ]
+  },
+  "boss_loot": {
+    "id": "boss_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 5,
+        "maxQuantity": 10,
+        "chance": 1.0
+      },
+      {
+        "itemId": "herb_glowcap",
+        "minQuantity": 3,
+        "maxQuantity": 5,
+        "chance": 0.8
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 5,
+        "maxQuantity": 10,
+        "chance": 0.6
+      }
+    ]
+  }
+}

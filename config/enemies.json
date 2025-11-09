@@ -2,7 +2,8 @@
   "wispling": {
     "id": "wispling",
     "name": "Wispling",
-    "modelUri": "models/enemies/wisp.gltf",
+    "modelUri": "models/npcs/bat.gltf",
+    "modelScale": 0.8,
     "health": 20,
     "speed": 2.5,
     "damage": 5,
@@ -13,7 +14,8 @@
   "feral_sprout": {
     "id": "feral_sprout",
     "name": "Feral Sprout",
-    "modelUri": "models/enemies/sprout.gltf",
+    "modelUri": "models/npcs/rabbit.gltf",
+    "modelScale": 1.2,
     "health": 35,
     "speed": 1.8,
     "damage": 8,
@@ -24,7 +26,8 @@
   "shadow_wolf": {
     "id": "shadow_wolf",
     "name": "Shadow Wolf",
-    "modelUri": "models/enemies/wolf.gltf",
+    "modelUri": "models/npcs/ocelot.gltf",
+    "modelScale": 1.0,
     "health": 50,
     "speed": 4.0,
     "damage": 15,
@@ -35,7 +38,8 @@
   "hollow_stag": {
     "id": "hollow_stag",
     "name": "Hollow Stag",
-    "modelUri": "models/enemies/stag.gltf",
+    "modelUri": "models/npcs/horse.gltf",
+    "modelScale": 1.5,
     "health": 150,
     "speed": 3.0,
     "damage": 25,

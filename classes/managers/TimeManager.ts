@@ -2,6 +2,7 @@ import { World } from 'hytopia';
 import { DayPhase } from '../../types/gameTypes';
 import GameManager from './GameManager';
 import AudioManager from './AudioManager';
+import NightManager from './NightManager';
 
 /**
  * TimeManager - Manages the 14-minute day/night cycle
@@ -231,8 +232,8 @@ export default class TimeManager {
     this.world.chatManager.sendBroadcastMessage(`🌙 NIGHT ${nightNumber} BEGINS`, 'FF0000');
     this.world.chatManager.sendBroadcastMessage('='.repeat(50), 'FF0000');
 
-    // TODO Phase 4: Trigger NightManager to start spawning enemies
-    // NightManager.instance.startNight(nightNumber);
+    // Start enemy spawning
+    NightManager.instance.startNight(nightNumber);
   }
 
   /**
@@ -247,8 +248,8 @@ export default class TimeManager {
     this.world.chatManager.sendBroadcastMessage('🌄 You survived the night!', '00FF00');
     this.world.chatManager.sendBroadcastMessage(`✨ Night ${nightNumber} complete`, '00FF00');
 
-    // TODO Phase 4: Stop enemy spawning
-    // NightManager.instance.endNight();
+    // Stop enemy spawning
+    NightManager.instance.endNight();
 
     // TODO Phase 5: Reward players with XP
   }

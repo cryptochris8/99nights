@@ -16,11 +16,14 @@
       "mcp__hytopia-mcp__getDocumentation",
       "mcp__hytopia-mcp__listProjectFiles",
       "mcp__hytopia-mcp__readProjectFile",
-      "mcp__hytopia-mcp__search"
+      "mcp__hytopia-mcp__search",
+      "Bash(mkdir:*)",
+      "Bash(npx tsc:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
+    "topia-helper",
     "hytopia-mcp"
   ]
 }

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>99 Nights in the Forest</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      color: #fff;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    #hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      pointer-events: none;
+    }
+
+    .stat-bar {
+      margin-bottom: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      min-width: 250px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .bar-container {
+      width: 100%;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .bar-fill {
+      height: 100%;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .health-bar {
+      background: linear-gradient(90deg, #dc143c, #ff4444);
+    }
+
+    .stamina-bar {
+      background: linear-gradient(90deg, #1e90ff, #4db8ff);
+    }
+
+    .xp-bar {
+      background: linear-gradient(90deg, #ffd700, #ffed4e);
+      color: #000;
+    }
+
+    #game-info {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 12px 16px;
+      border-radius: 4px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      text-align: right;
+    }
+
+    .info-line {
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .info-line:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-label {
+      color: #aaa;
+      margin-right: 8px;
+    }
+
+    .info-value {
+      color: #ffd700;
+      font-weight: bold;
+    }
+
+    #phase-banner {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 30px 60px;
+      border-radius: 8px;
+      border: 3px solid #ffd700;
+      font-size: 32px;
+      font-weight: bold;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+
+    #phase-banner.show {
+      opacity: 1;
+    }
+
+    .night-banner {
+      border-color: #ff0000 !important;
+      color: #ff4444;
+    }
+
+    .dawn-banner {
+      border-color: #00ff00 !important;
+      color: #44ff44;
+    }
+
+    #inventory-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #aaa;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .key {
+      color: #ffd700;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <!-- HUD -->
+  <div id="hud">
+    <!-- Health Bar -->
+    <div class="stat-bar">
+      <div class="stat-label">Health</div>
+      <div class="bar-container">
+        <div class="bar-fill health-bar" id="health-bar" style="width: 100%;">
+          <span id="health-text">100/100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stamina Bar -->
+    <div class="stat-bar">
+      <div class="stat-label">Stamina</div>
+      <div class="bar-container">
+        <div class="bar-fill stamina-bar" id="stamina-bar" style="width: 100%;">
+          <span id="stamina-text">100/100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- XP Bar -->
+    <div class="stat-bar">
+      <div class="stat-label">Level <span id="level-text">1</span> • XP</div>
+      <div class="bar-container">
+        <div class="bar-fill xp-bar" id="xp-bar" style="width: 0%;">
+          <span id="xp-text">0/100</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Info -->
+  <div id="game-info">
+    <div class="info-line">
+      <span class="info-label">Night:</span>
+      <span class="info-value" id="night-number">1</span><span class="info-value">/99</span>
+    </div>
+    <div class="info-line">
+      <span class="info-label">Phase:</span>
+      <span class="info-value" id="current-phase">Morning</span>
+    </div>
+    <div class="info-line">
+      <span class="info-label">Inventory:</span>
+      <span class="info-value" id="inventory-slots">0/24</span>
+    </div>
+  </div>
+
+  <!-- Phase Banner (shows during transitions) -->
+  <div id="phase-banner"></div>
+
+  <!-- Keyboard Hints -->
+  <div id="inventory-hint">
+    Press <span class="key">T</span> to chat • Type <span class="key">/help</span> for commands
+  </div>
+
+  <script>
+    // Simple UI state management
+    const UI = {
+      health: 100,
+      maxHealth: 100,
+      stamina: 100,
+      maxStamina: 100,
+      level: 1,
+      xp: 0,
+      xpForNext: 100,
+      nightNumber: 1,
+      currentPhase: 'morning',
+      inventorySlots: 0,
+
+      // Update functions
+      updateHealth(current, max) {
+        this.health = current;
+        this.maxHealth = max;
+        const percent = (current / max) * 100;
+        document.getElementById('health-bar').style.width = percent + '%';
+        document.getElementById('health-text').textContent = `${current}/${max}`;
+      },
+
+      updateStamina(current, max) {
+        this.stamina = current;
+        this.maxStamina = max;
+        const percent = (current / max) * 100;
+        document.getElementById('stamina-bar').style.width = percent + '%';
+        document.getElementById('stamina-text').textContent = `${current}/${max}`;
+      },
+
+      updateLevel(level, xp, xpForNext) {
+        this.level = level;
+        this.xp = xp;
+        this.xpForNext = xpForNext || (level * 100);
+        const percent = (xp / this.xpForNext) * 100;
+        document.getElementById('level-text').textContent = level;
+        document.getElementById('xp-bar').style.width = percent + '%';
+        document.getElementById('xp-text').textContent = `${xp}/${this.xpForNext}`;
+      },
+
+      updateGameInfo(nightNumber, phase, inventorySlots) {
+        if (nightNumber !== undefined) {
+          this.nightNumber = nightNumber;
+          document.getElementById('night-number').textContent = nightNumber;
+        }
+        if (phase !== undefined) {
+          this.currentPhase = phase;
+          document.getElementById('current-phase').textContent =
+            phase.charAt(0).toUpperCase() + phase.slice(1);
+        }
+        if (inventorySlots !== undefined) {
+          this.inventorySlots = inventorySlots;
+          document.getElementById('inventory-slots').textContent = `${inventorySlots}/24`;
+        }
+      },
+
+      showPhaseBanner(phase) {
+        const banner = document.getElementById('phase-banner');
+
+        // Phase-specific styling
+        banner.className = '';
+        if (phase === 'night') {
+          banner.classList.add('night-banner');
+          banner.textContent = '🌙 NIGHT FALLS';
+        } else if (phase === 'dawn') {
+          banner.classList.add('dawn-banner');
+          banner.textContent = '🌄 DAWN BREAKS';
+        } else if (phase === 'evening') {
+          banner.textContent = '⚠️ NIGHT APPROACHES';
+        } else {
+          return; // Don't show banner for morning/afternoon
+        }
+
+        // Show and hide
+        banner.classList.add('show');
+        setTimeout(() => {
+          banner.classList.remove('show');
+        }, 3000);
+      }
+    };
+
+    // Listen for messages from server
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+
+      if (data.type === 'player_stats') {
+        UI.updateHealth(data.health, data.maxHealth || 100);
+        UI.updateStamina(data.stamina, data.maxStamina || 100);
+        UI.updateLevel(data.level, data.xp, data.xpForNext);
+        UI.updateGameInfo(undefined, undefined, data.inventorySlots);
+      }
+
+      if (data.type === 'game_info') {
+        UI.updateGameInfo(data.night, data.phase, data.inventorySlots);
+      }
+
+      if (data.type === 'phase_change') {
+        UI.showPhaseBanner(data.phase);
+      }
+    });
+
+    console.log('🌲 99 Nights UI Loaded');
+  </script>
+</body>
+</html>

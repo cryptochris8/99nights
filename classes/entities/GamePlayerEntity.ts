@@ -388,3 +388,42 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     ].join('\n');
   }
 }
+
+  /**
+   * Attack nearby enemies
+   */
+  public attackNearbyEnemies(range: number = 3): number {
+    if (!this.world) return 0;
+
+    // Find nearby enemies
+    const enemies = this.world.entityManager.getEntitiesByTag('enemy');
+    let hitCount = 0;
+
+    for (const entity of enemies) {
+      const distance = this.distanceTo(entity.position);
+
+      if (distance <= range) {
+        // Calculate damage (base 10 + level * 2)
+        const damage = 10 + this.level * 2;
+
+        // Deal damage to enemy
+        const enemy = entity as any; // BaseEnemyEntity
+        if (enemy.takeDamage && !enemy.isDead) {
+          enemy.takeDamage(damage, this);
+          hitCount++;
+        }
+      }
+    }
+
+    return hitCount;
+  }
+
+  /**
+   * Calculate distance to a position
+   */
+  private distanceTo(pos: { x: number; y: number; z: number }): number {
+    const dx = this.position.x - pos.x;
+    const dy = this.position.y - pos.y;
+    const dz = this.position.z - pos.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }

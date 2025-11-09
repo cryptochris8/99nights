@@ -20,6 +20,7 @@ import AudioManager from './classes/managers/AudioManager';
 import InventoryManager from './classes/managers/InventoryManager';
 import CraftingManager from './classes/managers/CraftingManager';
 import GamePlayerEntity from './classes/entities/GamePlayerEntity';
+import NightManager from './classes/managers/NightManager';
 
 /**
  * Main server entry point
@@ -51,6 +52,9 @@ startServer(async (world) => {
 
   console.log('[Server] Initializing CraftingManager...');
   CraftingManager.instance.initialize(world);
+
+  console.log('[Server] Initializing NightManager...');
+  NightManager.instance.initialize(world);
 
   /**
    * Player Join Handler
@@ -133,6 +137,7 @@ startServer(async (world) => {
 
   // Help command
   world.chatManager.registerCommand('/help', (player) => {
+    world.chatManager.sendPlayerMessage(player, '   /attack - Attack nearby enemies', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '📖 Available Commands:', 'FFFF00');
     world.chatManager.sendPlayerMessage(player, '   /start - Start the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /status - Show game status', 'FFFFFF');
@@ -355,6 +360,32 @@ startServer(async (world) => {
         player,
         '❌ Inventory full!',
         'FF0000'
+      );
+    }
+  });
+
+  // Attack command (simple punch)
+  world.chatManager.registerCommand('/attack', (player) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    const hitCount = playerEntity.attackNearbyEnemies(3);
+
+    if (hitCount > 0) {
+      const damage = 10 + playerEntity.level * 2;
+      world.chatManager.sendPlayerMessage(
+        player,
+        `⚔️ You attack! Hit ${hitCount} enemy(ies) for ${damage} damage each`,
+        'FF0000'
+      );
+    } else {
+      world.chatManager.sendPlayerMessage(
+        player,
+        '💨 Your attack misses! No enemies nearby',
+        'FFAA00'
       );
     }
   });
