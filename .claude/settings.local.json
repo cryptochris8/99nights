@@ -18,7 +18,22 @@
       "mcp__hytopia-mcp__readProjectFile",
       "mcp__hytopia-mcp__search",
       "Bash(mkdir:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git fetch:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm install:*)",
+      "Bash(tree:*)",
+      "mcp__hytopia-mcp__askQuestion",
+      "Bash(timeout 10 hytopia start:*)",
+      "Bash(timeout 15 hytopia start:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 30 hytopia start:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Bash(nul)",
+      "Bash(if exist nul del nul)",
+      "Bash(rm:*)",
+      "Bash(powershell -Command \"if (Test-Path nul) { Remove-Item nul -Force }\")"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -21,6 +21,7 @@ import InventoryManager from './classes/managers/InventoryManager';
 import CraftingManager from './classes/managers/CraftingManager';
 import GamePlayerEntity from './classes/entities/GamePlayerEntity';
 import NightManager from './classes/managers/NightManager';
+import ResourceManager from './classes/managers/ResourceManager';
 
 /**
  * Main server entry point
@@ -55,6 +56,10 @@ startServer(async (world) => {
 
   console.log('[Server] Initializing NightManager...');
   NightManager.instance.initialize(world);
+
+  console.log('[Server] Initializing ResourceManager...');
+  ResourceManager.instance.initialize(world);
+  ResourceManager.instance.spawnInitialResources();
 
   /**
    * Player Join Handler

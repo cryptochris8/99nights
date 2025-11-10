@@ -22,6 +22,7 @@ export default class BaseEnemyEntity extends Entity {
     super({
       modelUri: config.modelUri,
       modelScale: (config as any).modelScale || 1.0,
+      modelTintColor: (config as any).modelTint || undefined,
       modelLoopedAnimations: ['idle'],
       name: config.name,
       rigidBodyOptions: {

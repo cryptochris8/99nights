@@ -180,6 +180,12 @@ export default class TimeManager {
     // Announce phase change to players
     this.announcePhaseChange(newPhase);
 
+    // Send UI updates to all players
+    this.broadcastGameInfo();
+
+    // Send phase banner to all players
+    this.broadcastPhaseBanner(newPhase);
+
     // Handle special phase transitions
     if (newPhase === DayPhase.NIGHT) {
       this.onNightBegin();
@@ -335,5 +341,39 @@ export default class TimeManager {
     }
 
     this.onPhaseChange(nextPhase);
+  }
+
+  /**
+   * Broadcast game info to all players' UIs
+   */
+  private broadcastGameInfo() {
+    if (!this.world) return;
+
+    const nightNumber = GameManager.instance.gameState.currentNight;
+    const players = this.world.getAllPlayers();
+
+    for (const player of players) {
+      player.ui.sendData({
+        type: 'game_info',
+        night: nightNumber,
+        phase: this.currentPhase,
+      });
+    }
+  }
+
+  /**
+   * Send phase banner to all players
+   */
+  private broadcastPhaseBanner(phase: DayPhase) {
+    if (!this.world) return;
+
+    const players = this.world.getAllPlayers();
+
+    for (const player of players) {
+      player.ui.sendData({
+        type: 'phase_change',
+        phase: phase,
+      });
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { DefaultPlayerEntity, DefaultPlayerEntityOptions, DefaultPlayerEntityController } from 'hytopia';
+import { DefaultPlayerEntity, DefaultPlayerEntityOptions, DefaultPlayerEntityController, BaseEntityControllerEvent } from 'hytopia';
 import { InventoryItem, PlayerData, GameEvents } from '../../types/gameTypes';
 import GameManager from '../managers/GameManager';
 
@@ -51,6 +51,12 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     // Start regeneration
     this.startHealthRegen();
     this.startStaminaRegen();
+
+    // Setup click-to-attack combat
+    this.setupClickToAttack();
+
+    // Send initial UI update
+    this.updateUI();
 
     // Welcome message
     this.world.chatManager.sendPlayerMessage(
@@ -143,6 +149,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this.healthRegenInterval = setInterval(() => {
       if (this.health < this.maxHealth) {
         this.health = Math.min(this.maxHealth, this.health + 1);
+        this.updateUI();
       }
     }, 5000);
   }
@@ -154,6 +161,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this.staminaRegenInterval = setInterval(() => {
       if (this.stamina < this.maxStamina) {
         this.stamina = Math.min(this.maxStamina, this.stamina + 5);
+        this.updateUI();
       }
     }, 1000);
   }
@@ -181,6 +189,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
         remaining -= canAdd;
 
         if (remaining === 0) {
+          this.updateUI();
           return true;
         }
       }
@@ -195,6 +204,9 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       });
       remaining -= stackSize;
     }
+
+    // Update UI
+    this.updateUI();
 
     // Return true if all items were added
     return remaining === 0;
@@ -220,10 +232,14 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
         }
 
         if (remaining === 0) {
+          this.updateUI();
           return true;
         }
       }
     }
+
+    // Update UI
+    this.updateUI();
 
     // Return true only if all items were removed
     return remaining === 0;
@@ -252,6 +268,8 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this.xp += amount;
     const xpForNextLevel = this.level * 100;
 
+    this.updateUI();
+
     if (this.xp >= xpForNextLevel) {
       this.levelUp();
     }
@@ -273,6 +291,9 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       `§6✨ Level Up! You are now level ${this.level}!`,
     );
 
+    // Update UI with new stats
+    this.updateUI();
+
     // Emit level up event
     this.world.eventRouter.emit(GameEvents.PLAYER_LEVEL_UP, {
       player: this,
@@ -285,6 +306,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
    */
   public takeDamage(amount: number) {
     this.health = Math.max(0, this.health - amount);
+    this.updateUI();
 
     if (this.health === 0) {
       this.die();
@@ -296,6 +318,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
    */
   public heal(amount: number) {
     this.health = Math.min(this.maxHealth, this.health + amount);
+    this.updateUI();
   }
 
   /**
@@ -304,6 +327,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
   public useStamina(amount: number): boolean {
     if (this.stamina >= amount) {
       this.stamina -= amount;
+      this.updateUI();
       return true;
     }
     return false;
@@ -387,10 +411,83 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       `§fRunes: §7${this.runes.length}/${this.MAX_RUNE_SLOTS} equipped`,
     ].join('\n');
   }
-}
 
   /**
-   * Attack nearby enemies
+   * Setup click-to-attack combat system and structure placement
+   */
+  private setupClickToAttack() {
+    if (!this.controller) return;
+
+    // Listen for player input each tick
+    this.controller.on(BaseEntityControllerEvent.TICK_WITH_PLAYER_INPUT, ({ input }) => {
+      // Left mouse click - attack
+      if (input.ml) {
+        input.ml = false;
+        this.performClickAttack();
+      }
+
+      // Right mouse click - place structure (if holding placeable item)
+      if (input.mr) {
+        input.mr = false;
+        this.attemptStructurePlacement();
+      }
+    });
+  }
+
+  /**
+   * Perform a click-based attack using raycast
+   */
+  private performClickAttack() {
+    if (!this.world) return;
+
+    // Get camera position and facing direction
+    const origin = this.getCameraPosition();
+    const direction = this.player.camera.facingDirection;
+    const range = 8; // Attack range in blocks
+
+    // Perform raycast to find what the player is looking at
+    const hit = this.world.simulation.raycast(origin, direction, range, {
+      filterExcludeRigidBody: this.rawRigidBody,
+    });
+
+    if (!hit || !hit.hitEntity) {
+      // Missed - no entity hit
+      this.world.chatManager.sendPlayerMessage(this, '§7*swing*');
+      return;
+    }
+
+    // Check if hit entity is an enemy
+    const target = hit.hitEntity as any;
+    if (typeof target.takeDamage !== 'function' || !target.hasTag('enemy')) {
+      // Hit something, but not an enemy
+      return;
+    }
+
+    // Calculate damage (base 10 + level * 2)
+    const damage = 10 + this.level * 2;
+
+    // Attack the enemy
+    target.takeDamage(damage, this);
+
+    // Visual/audio feedback
+    this.world.chatManager.sendPlayerMessage(
+      this,
+      `§c⚔ Hit ${target.name} for ${damage} damage!`
+    );
+
+    // Optional: Apply small knockback
+    if (target.rawRigidBody && direction) {
+      const impulse = {
+        x: direction.x * 3,
+        y: 1,
+        z: direction.z * 3,
+      };
+      target.applyImpulse(impulse);
+    }
+  }
+
+  /**
+   * Attack nearby enemies (legacy method for /attack command)
    */
   public attackNearbyEnemies(range: number = 3): number {
     if (!this.world) return 0;
@@ -427,3 +524,122 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     const dz = this.position.z - pos.z;
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
+
+  /**
+   * Attempt to place a structure at the player's target location
+   */
+  private attemptStructurePlacement() {
+    if (!this.world) return;
+
+    // Get camera position and facing direction
+    const origin = this.getCameraPosition();
+    const direction = this.player.camera.facingDirection;
+    const range = 6; // Placement range
+
+    // Perform raycast to find placement location
+    const hit = this.world.simulation.raycast(origin, direction, range, {
+      filterExcludeRigidBody: this.rawRigidBody,
+    });
+
+    if (!hit || !hit.hitBlock) {
+      this.world.chatManager.sendPlayerMessage(this, '§7No valid placement location.');
+      return;
+    }
+
+    // Get the placement coordinate (on top of the hit block)
+    const placementCoordinate = hit.hitBlock.getNeighborGlobalCoordinateFromHitPoint(hit.hitPoint);
+    const placementPosition = this.world.chunkLattice.getBlockGlobalPosition(placementCoordinate);
+
+    // Check inventory for placeable items
+    const placeableItems = ['campfire', 'torch', 'ward_totem_t1'];
+    let itemToPlace: string | null = null;
+
+    for (const itemId of placeableItems) {
+      if (this.hasItems(itemId, 1)) {
+        itemToPlace = itemId;
+        break;
+      }
+    }
+
+    if (!itemToPlace) {
+      this.world.chatManager.sendPlayerMessage(
+        this,
+        '§cNo placeable structures in inventory. Craft a campfire, torch, or ward totem!'
+      );
+      return;
+    }
+
+    // Import structure entities dynamically
+    this.placeStructure(itemToPlace, placementPosition);
+  }
+
+  /**
+   * Place a structure entity in the world
+   */
+  private async placeStructure(itemId: string, position: { x: number; y: number; z: number }) {
+    if (!this.world) return;
+
+    // Remove item from inventory
+    if (!this.removeItemFromInventory(itemId, 1)) {
+      this.world.chatManager.sendPlayerMessage(this, '§cFailed to remove item from inventory.');
+      return;
+    }
+
+    // Dynamically import and create the appropriate structure
+    let structure: any;
+
+    try {
+      if (itemId === 'campfire') {
+        const { default: CampfireEntity } = await import('./structures/CampfireEntity');
+        structure = new CampfireEntity({ placedBy: this.id });
+      } else if (itemId === 'torch') {
+        const { default: TorchEntity } = await import('./structures/TorchEntity');
+        structure = new TorchEntity({ placedBy: this.id });
+      } else if (itemId === 'ward_totem_t1') {
+        const { default: WardTotemEntity } = await import('./structures/WardTotemEntity');
+        structure = new WardTotemEntity({ placedBy: this.id, tier: 1 });
+      } else {
+        this.world.chatManager.sendPlayerMessage(this, `§cUnknown structure: ${itemId}`);
+        // Refund the item
+        this.addItemToInventory(itemId, 1);
+        return;
+      }
+
+      // Spawn the structure
+      structure.spawn(this.world, position);
+
+      this.world.chatManager.sendPlayerMessage(
+        this,
+        `§aPlaced ${structure.structureName}!`
+      );
+
+      console.log(`[GamePlayerEntity] Player ${this.id} placed ${itemId} at ${JSON.stringify(position)}`);
+    } catch (error) {
+      console.error(`[GamePlayerEntity] Failed to place structure ${itemId}:`, error);
+      this.world.chatManager.sendPlayerMessage(this, `§cFailed to place structure.`);
+      // Refund the item
+      this.addItemToInventory(itemId, 1);
+    }
+  }
+
+  /**
+   * Send UI updates to the player's screen
+   */
+  public updateUI() {
+    if (!this.player?.ui) return;
+
+    const xpForNextLevel = this.level * 100;
+
+    this.player.ui.sendData({
+      type: 'player_stats',
+      health: this.health,
+      maxHealth: this.maxHealth,
+      stamina: this.stamina,
+      maxStamina: this.maxStamina,
+      level: this.level,
+      xp: this.xp,
+      xpForNext: xpForNextLevel,
+      inventorySlots: this.inventory.length,
+    });
+  }
+}
