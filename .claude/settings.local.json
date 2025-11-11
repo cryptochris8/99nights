@@ -33,7 +33,9 @@
       "Bash(nul)",
       "Bash(if exist nul del nul)",
       "Bash(rm:*)",
-      "Bash(powershell -Command \"if (Test-Path nul) { Remove-Item nul -Force }\")"
+      "Bash(powershell -Command \"if (Test-Path nul) { Remove-Item nul -Force }\")",
+      "Bash(git pull:*)",
+      "mcp__hytopia-mcp__listDocumentation"
     ]
   },
   "enableAllProjectMcpServers": true,

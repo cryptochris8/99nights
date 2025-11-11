@@ -78,5 +78,85 @@
         "chance": 0.6
       }
     ]
+  },
+  "stalker_loot": {
+    "id": "stalker_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 2,
+        "maxQuantity": 3,
+        "chance": 0.6
+      },
+      {
+        "itemId": "wood",
+        "minQuantity": 2,
+        "maxQuantity": 5,
+        "chance": 0.5
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 1,
+        "maxQuantity": 3,
+        "chance": 0.4
+      }
+    ]
+  },
+  "zombie_loot": {
+    "id": "zombie_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 1,
+        "maxQuantity": 2,
+        "chance": 0.4
+      },
+      {
+        "itemId": "wood",
+        "minQuantity": 1,
+        "maxQuantity": 3,
+        "chance": 0.5
+      }
+    ]
+  },
+  "archer_loot": {
+    "id": "archer_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 1,
+        "maxQuantity": 3,
+        "chance": 0.55
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 2,
+        "maxQuantity": 4,
+        "chance": 0.6
+      }
+    ]
+  },
+  "frost_loot": {
+    "id": "frost_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 2,
+        "maxQuantity": 4,
+        "chance": 0.65
+      },
+      {
+        "itemId": "herb_glowcap",
+        "minQuantity": 1,
+        "maxQuantity": 2,
+        "chance": 0.5
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 2,
+        "maxQuantity": 5,
+        "chance": 0.5
+      }
+    ]
   }
 }

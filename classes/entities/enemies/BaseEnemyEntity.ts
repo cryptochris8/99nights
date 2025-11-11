@@ -2,6 +2,7 @@ import { Entity, EntityEvent, World } from 'hytopia';
 import type { EnemyConfig } from '../../../types/gameTypes';
 import EnemyController from '../../controllers/EnemyController';
 import GameManager from '../../managers/GameManager';
+import AudioManager from '../../managers/AudioManager';
 import GamePlayerEntity from '../GamePlayerEntity';
 
 /**
@@ -87,6 +88,9 @@ export default class BaseEnemyEntity extends Entity {
 
     playerEntity.takeDamage(this.config.damage);
 
+    // Play attack sound at enemy position
+    AudioManager.instance.playSFX('audio/sfx/damage/hit.mp3', 0.6, this.position);
+
     this.world.chatManager.sendPlayerMessage(
       playerEntity,
       `§c${this.config.name} attacks you for ${this.config.damage} damage!`
@@ -103,6 +107,21 @@ export default class BaseEnemyEntity extends Entity {
 
     this.health = Math.max(0, this.health - amount);
 
+    // Play hurt sound based on enemy type
+    const hurtSounds = {
+      'skeleton': 'audio/sfx/entity/skeleton/skeleton-hit.mp3',
+      'zombie': 'audio/sfx/entity/zombie/zombie-hurt.mp3',
+      'spider': 'audio/sfx/entity/spider/spider-screech-1.mp3',
+      'default': 'audio/sfx/damage/hit-wood.mp3'
+    };
+
+    const soundKey = this.config.id.includes('skeleton') ? 'skeleton' :
+                     this.config.id.includes('zombie') ? 'zombie' :
+                     this.config.id.includes('wispling') ? 'spider' :
+                     'default';
+
+    AudioManager.instance.playSFX(hurtSounds[soundKey], 0.5, this.position);
+
     console.log(`[BaseEnemyEntity] ${this.config.name} took ${amount} damage (${this.health}/${this.maxHealth} HP)`);
 
     if (this.health <= 0) {
@@ -118,6 +137,21 @@ export default class BaseEnemyEntity extends Entity {
 
     this.isDead = true;
     console.log(`[BaseEnemyEntity] ${this.config.name} died`);
+
+    // Play death sound based on enemy type
+    const deathSounds = {
+      'skeleton': 'audio/sfx/entity/skeleton/skeleton-death.mp3',
+      'zombie': 'audio/sfx/entity/zombie/zombie-death.mp3',
+      'spider': 'audio/sfx/entity/spider/spider-death.mp3',
+      'default': 'audio/sfx/damage/hit-woodbreak.mp3'
+    };
+
+    const soundKey = this.config.id.includes('skeleton') ? 'skeleton' :
+                     this.config.id.includes('zombie') ? 'zombie' :
+                     this.config.id.includes('wispling') ? 'spider' :
+                     'default';
+
+    AudioManager.instance.playSFX(deathSounds[soundKey], 0.7, this.position);
 
     // Award XP to killer
     if (killer) {

@@ -394,10 +394,16 @@ startServer(async (world) => {
       return;
     }
 
+    // Play sword swing sound
+    AudioManager.instance.playSFX('audio/sfx/player/player-swing-woosh.mp3', 0.5, playerEntity.position);
+
     const hitCount = playerEntity.attackNearbyEnemies(3);
 
     if (hitCount > 0) {
       const damage = 10 + playerEntity.level * 2;
+      // Play hit sound on successful attack
+      AudioManager.instance.playSFX('audio/sfx/damage/hit-metal-1.mp3', 0.6, playerEntity.position);
+
       world.chatManager.sendPlayerMessage(
         player,
         `⚔️ You attack! Hit ${hitCount} enemy(ies) for ${damage} damage each`,
