@@ -198,6 +198,7 @@ startServer(async (world) => {
     const cycleProgress = Math.floor(TimeManager.instance.getCycleProgress() * 100);
     const nightNumber = GameManager.instance.gameState.currentNight;
     const musicState = AudioManager.instance.getCurrentState();
+    const isRunning = (TimeManager.instance as any).isRunning; // Check if cycle is running
 
     world.chatManager.sendPlayerMessage(player, '⏰ Time Info:', 'FFFF00');
     world.chatManager.sendPlayerMessage(player, `   Current Phase: ${currentPhase}`, 'FFFFFF');
@@ -205,6 +206,7 @@ startServer(async (world) => {
     world.chatManager.sendPlayerMessage(player, `   Cycle Progress: ${cycleProgress}%`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Night: ${nightNumber}/99`, 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, `   Music: ${musicState}`, 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, `   Cycle Active: ${isRunning ? 'YES ✓' : 'NO ✗ (use /start)'}`, isRunning ? '00FF00' : 'FF0000');
   });
 
   // Skip phase command (dev/testing)
@@ -215,13 +217,28 @@ startServer(async (world) => {
     }
 
     const oldPhase = TimeManager.instance.getCurrentPhase();
+    console.log(`[/skipphase] Before skip: ${oldPhase}`);
+
     TimeManager.instance.skipToNextPhase();
+
     const newPhase = TimeManager.instance.getCurrentPhase();
+    console.log(`[/skipphase] After skip: ${newPhase}`);
+
+    // Check if phase actually changed
+    if (oldPhase === newPhase) {
+      console.log(`[/skipphase] Phase did not change!`);
+      world.chatManager.sendPlayerMessage(player, '⚠️  Time cycle not running! Use /start to begin', 'FF0000');
+      return;
+    }
 
     // Update music for new phase
     AudioManager.instance.updateMusicForPhase(newPhase);
 
+    console.log(`[/skipphase] Sending skip message to player`);
     world.chatManager.sendPlayerMessage(player, `⏩ Skipped: ${oldPhase} → ${newPhase}`, 'FFFF00');
+
+    // Also send broadcast so everyone sees it
+    world.chatManager.sendBroadcastMessage(`⏩ ${player.username} skipped: ${oldPhase} → ${newPhase}`, 'FFFF00');
   });
 
   // Debug command
