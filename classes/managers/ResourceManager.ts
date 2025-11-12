@@ -1,7 +1,5 @@
 import { World } from 'hytopia';
-import TreeEntity from '../entities/resources/TreeEntity';
-import RockEntity from '../entities/resources/RockEntity';
-import HerbEntity from '../entities/resources/HerbEntity';
+import ResourceNodeEntity, { ResourceNodeConfig } from '../entities/resources/ResourceNodeEntity';
 
 /**
  * ResourceManager
@@ -12,7 +10,7 @@ import HerbEntity from '../entities/resources/HerbEntity';
 export default class ResourceManager {
   private static _instance: ResourceManager;
   private world?: World;
-  private resourceEntities: Set<TreeEntity | RockEntity | HerbEntity> = new Set();
+  private resourceEntities: Set<ResourceNodeEntity> = new Set();
 
   private constructor() {}
 
@@ -60,6 +58,12 @@ export default class ResourceManager {
   private spawnTrees(count: number) {
     if (!this.world) return;
 
+    const treeModels = [
+      'models/environment/Pine Forest/pine-tree-medium.gltf',
+      'models/environment/Plains/oak-tree-medium.gltf',
+      'models/environment/Plains/oak-tree-small.gltf',
+    ];
+
     for (let i = 0; i < count; i++) {
       // Random position in a ring around spawn (radius 20-60 blocks)
       const angle = Math.random() * Math.PI * 2;
@@ -68,7 +72,19 @@ export default class ResourceManager {
       const z = Math.sin(angle) * radius;
       const y = 10; // Adjust based on your map height
 
-      const tree = new TreeEntity();
+      const config: ResourceNodeConfig = {
+        type: 'tree',
+        modelUri: treeModels[Math.floor(Math.random() * treeModels.length)],
+        modelScale: 0.8 + Math.random() * 0.4, // Random scale 0.8-1.2
+        itemId: 'wood',
+        itemName: 'Tree',
+        minYield: 3,
+        maxYield: 6,
+        gatherTime: 2000, // 2 seconds
+        respawnTime: 120000, // 2 minutes
+      };
+
+      const tree = new ResourceNodeEntity(config);
       tree.spawn(this.world, { x, y, z });
       this.resourceEntities.add(tree);
     }
@@ -82,6 +98,12 @@ export default class ResourceManager {
   private spawnRocks(count: number) {
     if (!this.world) return;
 
+    const rockModels = [
+      'models/environment/Desert/rock-1.gltf',
+      'models/environment/Desert/rock-2.gltf',
+      'models/environment/Desert/rock-3.gltf',
+    ];
+
     for (let i = 0; i < count; i++) {
       // Random position in a ring around spawn (radius 15-50 blocks)
       const angle = Math.random() * Math.PI * 2;
@@ -90,7 +112,19 @@ export default class ResourceManager {
       const z = Math.sin(angle) * radius;
       const y = 10; // Adjust based on your map height
 
-      const rock = new RockEntity();
+      const config: ResourceNodeConfig = {
+        type: 'rock',
+        modelUri: rockModels[Math.floor(Math.random() * rockModels.length)],
+        modelScale: 0.6 + Math.random() * 0.3, // Random scale 0.6-0.9
+        itemId: 'stone',
+        itemName: 'Rock',
+        minYield: 2,
+        maxYield: 5,
+        gatherTime: 2500, // 2.5 seconds
+        respawnTime: 180000, // 3 minutes
+      };
+
+      const rock = new ResourceNodeEntity(config);
       rock.spawn(this.world, { x, y, z });
       this.resourceEntities.add(rock);
     }
@@ -104,6 +138,12 @@ export default class ResourceManager {
   private spawnHerbs(count: number) {
     if (!this.world) return;
 
+    const herbModels = [
+      'models/environment/Plains/mushroom-purple-multiple.gltf',
+      'models/environment/Plains/mushroom-purple-single.gltf',
+      'models/environment/Pine Forest/redcap-mushroom-group.gltf',
+    ];
+
     for (let i = 0; i < count; i++) {
       // Random position in a ring around spawn (radius 10-40 blocks)
       const angle = Math.random() * Math.PI * 2;
@@ -112,7 +152,19 @@ export default class ResourceManager {
       const z = Math.sin(angle) * radius;
       const y = 10; // Adjust based on your map height
 
-      const herb = new HerbEntity();
+      const config: ResourceNodeConfig = {
+        type: 'herb',
+        modelUri: herbModels[Math.floor(Math.random() * herbModels.length)],
+        modelScale: 0.5 + Math.random() * 0.3, // Random scale 0.5-0.8
+        itemId: 'herb_glowcap',
+        itemName: 'Glowcap Mushroom',
+        minYield: 1,
+        maxYield: 3,
+        gatherTime: 1500, // 1.5 seconds
+        respawnTime: 90000, // 1.5 minutes
+      };
+
+      const herb = new ResourceNodeEntity(config);
       herb.spawn(this.world, { x, y, z });
       this.resourceEntities.add(herb);
     }
@@ -132,23 +184,51 @@ export default class ResourceManager {
       return;
     }
 
-    let resource: TreeEntity | RockEntity | HerbEntity;
+    let config: ResourceNodeConfig;
 
     switch (type) {
       case 'tree':
-        resource = new TreeEntity();
+        config = {
+          type: 'tree',
+          modelUri: 'models/environment/Plains/oak-tree-medium.gltf',
+          itemId: 'wood',
+          itemName: 'Tree',
+          minYield: 3,
+          maxYield: 6,
+          gatherTime: 2000,
+          respawnTime: 120000,
+        };
         break;
       case 'rock':
-        resource = new RockEntity();
+        config = {
+          type: 'rock',
+          modelUri: 'models/environment/Desert/rock-2.gltf',
+          itemId: 'stone',
+          itemName: 'Rock',
+          minYield: 2,
+          maxYield: 5,
+          gatherTime: 2500,
+          respawnTime: 180000,
+        };
         break;
       case 'herb':
-        resource = new HerbEntity();
+        config = {
+          type: 'herb',
+          modelUri: 'models/environment/Plains/mushroom-purple-multiple.gltf',
+          itemId: 'herb_glowcap',
+          itemName: 'Glowcap Mushroom',
+          minYield: 1,
+          maxYield: 3,
+          gatherTime: 1500,
+          respawnTime: 90000,
+        };
         break;
       default:
         console.error(`[ResourceManager] Unknown resource type: ${type}`);
         return;
     }
 
+    const resource = new ResourceNodeEntity(config);
     resource.spawn(this.world, position);
     this.resourceEntities.add(resource);
 
@@ -165,9 +245,9 @@ export default class ResourceManager {
 
     let count = 0;
     for (const resource of this.resourceEntities) {
-      if (type === 'tree' && resource instanceof TreeEntity) count++;
-      if (type === 'rock' && resource instanceof RockEntity) count++;
-      if (type === 'herb' && resource instanceof HerbEntity) count++;
+      if (resource.hasTag(`resource_${type}`)) {
+        count++;
+      }
     }
 
     return count;
