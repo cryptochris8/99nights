@@ -39,15 +39,15 @@ export default class ResourceNodeEntity extends Entity {
     });
 
     this.config = config;
-
-    // Add tags for identification
-    this.addTag('resource');
-    this.addTag(`resource_${config.type}`);
-    this.addTag(config.itemId);
   }
 
   async onSpawn() {
     await super.onSpawn();
+
+    // Add tags for identification (do this after spawn)
+    this.addTag('resource');
+    this.addTag(`resource_${this.config.type}`);
+    this.addTag(this.config.itemId);
 
     // Listen for player interactions
     this.on(EntityEvent.INTERACT, ({ player }) => {
