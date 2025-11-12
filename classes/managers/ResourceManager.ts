@@ -59,7 +59,8 @@ export default class ResourceManager {
     if (!this.world) return;
 
     const treeModels = [
-      'models/environment/Pine Forest/pine-tree-medium.gltf',
+      'models/environment/Pine%20Forest/pine-tree-medium.gltf',
+      'models/environment/Pine%20Forest/pine-tree-small.gltf',
       'models/environment/Plains/oak-tree-medium.gltf',
       'models/environment/Plains/oak-tree-small.gltf',
     ];
@@ -141,7 +142,7 @@ export default class ResourceManager {
     const herbModels = [
       'models/environment/Plains/mushroom-purple-multiple.gltf',
       'models/environment/Plains/mushroom-purple-single.gltf',
-      'models/environment/Pine Forest/redcap-mushroom-group.gltf',
+      'models/environment/Pine%20Forest/redcap-mushroom-group.gltf',
     ];
 
     for (let i = 0; i < count; i++) {
