@@ -59,10 +59,10 @@ export default class ResourceManager {
     if (!this.world) return;
 
     const treeModels = [
-      'models/environment/Pine%20Forest/pine-tree-medium.gltf',
-      'models/environment/Pine%20Forest/pine-tree-small.gltf',
-      'models/environment/Plains/oak-tree-medium.gltf',
-      'models/environment/Plains/oak-tree-small.gltf',
+      'models/environment/Pine%20Forest/.optimized/pine-tree-medium/pine-tree-medium.glb',
+      'models/environment/Pine%20Forest/.optimized/pine-tree-small/pine-tree-small.glb',
+      'models/environment/Plains/.optimized/oak-tree-medium/oak-tree-medium.glb',
+      'models/environment/Plains/.optimized/oak-tree-big/oak-tree-big.glb',
     ];
 
     for (let i = 0; i < count; i++) {
@@ -100,9 +100,9 @@ export default class ResourceManager {
     if (!this.world) return;
 
     const rockModels = [
-      'models/environment/Desert/rock-1.gltf',
-      'models/environment/Desert/rock-2.gltf',
-      'models/environment/Desert/rock-3.gltf',
+      'models/environment/Desert/.optimized/rock-1/rock-1.glb',
+      'models/environment/Desert/.optimized/rock-2/rock-2.glb',
+      'models/environment/Desert/.optimized/rock-3/rock-3.glb',
     ];
 
     for (let i = 0; i < count; i++) {
@@ -140,9 +140,9 @@ export default class ResourceManager {
     if (!this.world) return;
 
     const herbModels = [
-      'models/environment/Plains/mushroom-purple-multiple.gltf',
-      'models/environment/Plains/mushroom-purple-single.gltf',
-      'models/environment/Pine%20Forest/redcap-mushroom-group.gltf',
+      'models/environment/.optimized/Purple-Mushroom-Multiple/Purple-Mushroom-Multiple.glb',
+      'models/environment/.optimized/Purple-Mushroom-Single/Purple-Mushroom-Single.glb',
+      'models/environment/.optimized/Red-Mushroom-Multiple/Red-Mushroom-Multiple.glb',
     ];
 
     for (let i = 0; i < count; i++) {
@@ -191,7 +191,7 @@ export default class ResourceManager {
       case 'tree':
         config = {
           type: 'tree',
-          modelUri: 'models/environment/Plains/oak-tree-medium.gltf',
+          modelUri: 'models/environment/Plains/.optimized/oak-tree-medium/oak-tree-medium.glb',
           itemId: 'wood',
           itemName: 'Tree',
           minYield: 3,
@@ -203,7 +203,7 @@ export default class ResourceManager {
       case 'rock':
         config = {
           type: 'rock',
-          modelUri: 'models/environment/Desert/rock-2.gltf',
+          modelUri: 'models/environment/Desert/.optimized/rock-2/rock-2.glb',
           itemId: 'stone',
           itemName: 'Rock',
           minYield: 2,
@@ -215,7 +215,7 @@ export default class ResourceManager {
       case 'herb':
         config = {
           type: 'herb',
-          modelUri: 'models/environment/Plains/mushroom-purple-multiple.gltf',
+          modelUri: 'models/environment/.optimized/Purple-Mushroom-Multiple/Purple-Mushroom-Multiple.glb',
           itemId: 'herb_glowcap',
           itemName: 'Glowcap Mushroom',
           minYield: 1,
