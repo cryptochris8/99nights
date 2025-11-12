@@ -35,7 +35,8 @@
       "Bash(rm:*)",
       "Bash(powershell -Command \"if (Test-Path nul) { Remove-Item nul -Force }\")",
       "Bash(git pull:*)",
-      "mcp__hytopia-mcp__listDocumentation"
+      "mcp__hytopia-mcp__listDocumentation",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Killed all node processes''\")"
     ]
   },
   "enableAllProjectMcpServers": true,
