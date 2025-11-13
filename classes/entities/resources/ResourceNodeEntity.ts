@@ -26,6 +26,8 @@ export default class ResourceNodeEntity extends Entity {
   private isBeingGathered: boolean = false;
   private isDepleted: boolean = false;
   private respawnTimeout?: NodeJS.Timeout;
+  private respawnTimerInterval?: NodeJS.Timeout;
+  private respawnStartTime: number = 0;
 
   constructor(config: ResourceNodeConfig) {
     super({
@@ -53,6 +55,9 @@ export default class ResourceNodeEntity extends Entity {
     this.on(EntityEvent.DESPAWN, () => {
       if (this.respawnTimeout) {
         clearTimeout(this.respawnTimeout);
+      }
+      if (this.respawnTimerInterval) {
+        clearInterval(this.respawnTimerInterval);
       }
     });
   }
@@ -194,9 +199,14 @@ export default class ResourceNodeEntity extends Entity {
 
     // Schedule respawn if configured
     if (this.config.respawnTime) {
+      this.respawnStartTime = Date.now();
+
       this.respawnTimeout = setTimeout(() => {
         this.respawn();
       }, this.config.respawnTime);
+
+      // Start broadcasting respawn timer to nearby players
+      this.startRespawnTimerBroadcast();
 
       console.log(`[ResourceNode] ${this.config.itemName} depleted, will respawn in ${this.config.respawnTime}ms`);
     } else {
@@ -218,12 +228,104 @@ export default class ResourceNodeEntity extends Entity {
     this.isDepleted = false;
     this.isBeingGathered = false;
 
+    // Stop timer broadcast
+    if (this.respawnTimerInterval) {
+      clearInterval(this.respawnTimerInterval);
+      this.respawnTimerInterval = undefined;
+    }
+
     // Restore visual
     this.setTintColor({ r: 255, g: 255, b: 255 });
+
+    // Broadcast respawn to nearby players
+    this.broadcastResourceState('available');
 
     // Play respawn sound
     AudioManager.instance.playSFX('audio/sfx/ui/notification-1.mp3', 0.3, this.position);
 
     console.log(`[ResourceNode] ${this.config.itemName} respawned`);
+  }
+
+  /**
+   * Start broadcasting respawn timer to nearby players
+   */
+  private startRespawnTimerBroadcast() {
+    if (!this.world || !this.config.respawnTime) return;
+
+    // Broadcast every 500ms
+    this.respawnTimerInterval = setInterval(() => {
+      const elapsed = Date.now() - this.respawnStartTime;
+      const remaining = Math.max(0, this.config.respawnTime! - elapsed);
+
+      if (remaining <= 0) {
+        if (this.respawnTimerInterval) {
+          clearInterval(this.respawnTimerInterval);
+          this.respawnTimerInterval = undefined;
+        }
+        return;
+      }
+
+      // Broadcast to nearby players
+      this.broadcastRespawnTimer(remaining);
+    }, 500);
+  }
+
+  /**
+   * Broadcast respawn timer to nearby players
+   */
+  private broadcastRespawnTimer(remainingMs: number) {
+    if (!this.world) return;
+
+    const nearbyPlayers = this.world.entityManager.getAllPlayerEntities()
+      .filter(pe => {
+        const dx = pe.position.x - this.position.x;
+        const dz = pe.position.z - this.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        return distance < 20; // Show to players within 20 blocks
+      });
+
+    for (const playerEntity of nearbyPlayers) {
+      const player = (playerEntity as GamePlayerEntity).player;
+      if (player?.ui) {
+        player.ui.sendData({
+          type: 'resource_respawn_timer',
+          x: this.position.x,
+          y: this.position.y + 2, // Above resource
+          z: this.position.z,
+          remainingMs: remainingMs,
+          resourceName: this.config.itemName,
+        });
+      }
+    }
+  }
+
+  /**
+   * Broadcast resource state change to nearby players
+   */
+  private broadcastResourceState(state: 'available' | 'depleted') {
+    if (!this.world) return;
+
+    const nearbyPlayers = this.world.entityManager.getAllPlayerEntities()
+      .filter(pe => {
+        const dx = pe.position.x - this.position.x;
+        const dz = pe.position.z - this.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        return distance < 20;
+      });
+
+    for (const playerEntity of nearbyPlayers) {
+      const player = (playerEntity as GamePlayerEntity).player;
+      if (player?.ui) {
+        player.ui.sendData({
+          type: 'resource_state_change',
+          x: this.position.x,
+          y: this.position.y,
+          z: this.position.z,
+          state: state,
+          resourceType: this.config.type,
+          resourceName: this.config.itemName,
+        });
+      }
+    }
   }
 }
