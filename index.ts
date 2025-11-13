@@ -11,6 +11,7 @@
 import {
   startServer,
   PlayerEvent,
+  ModelRegistry,
 } from 'hytopia';
 
 import worldMap from './assets/maps/map.json';
@@ -22,6 +23,11 @@ import CraftingManager from './classes/managers/CraftingManager';
 import GamePlayerEntity from './classes/entities/GamePlayerEntity';
 import NightManager from './classes/managers/NightManager';
 import ResourceManager from './classes/managers/ResourceManager';
+
+// Model optimization is enabled by default for better performance
+// The SDK automatically optimizes models from @hytopia.com/assets
+// Uncomment the line below ONLY if you experience issues with optimized models:
+// ModelRegistry.instance.optimize = false;
 
 /**
  * Main server entry point
@@ -59,6 +65,7 @@ startServer(async (world) => {
 
   console.log('[Server] Initializing ResourceManager...');
   ResourceManager.instance.initialize(world);
+  // Resource spawning enabled with fixed model paths
   ResourceManager.instance.spawnInitialResources();
 
   /**
@@ -68,10 +75,11 @@ startServer(async (world) => {
     console.log(`[Server] Player joined: ${player.username} (ID: ${player.id})`);
 
     // Create custom game player entity
+    // Using default player model (no modelUri specified)
     const playerEntity = new GamePlayerEntity({
       player,
       name: player.username,
-      modelUri: 'models/players/player.gltf',
+      // modelUri removed - using default player model to avoid optimization issues
       modelScale: 0.5, // Hytopia standard (~1.5 blocks tall)
     });
 
@@ -82,7 +90,7 @@ startServer(async (world) => {
     // Camera offset positions the view at upper body/head level
     player.camera.setOffset({ x: 0, y: 0.8, z: 0 });
 
-    // Load game UI
+    // Load game UI (path is relative to assets/ directory)
     player.ui.load('ui/index.html');
   });
 
@@ -104,11 +112,24 @@ startServer(async (world) => {
 
   // Start the game
   world.chatManager.registerCommand('/start', (player) => {
-    if (GameManager.instance.gameState.isStarted) {
-      world.chatManager.sendPlayerMessage(player, '⚠️  Game already started!', 'FF0000');
+    const isGameStarted = GameManager.instance.gameState.isStarted;
+    const isTimeRunning = TimeManager.instance.isRunning();
+
+    // If both are already running, nothing to do
+    if (isGameStarted && isTimeRunning) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Game already started and running!', 'FF0000');
       return;
     }
 
+    // If game state says started but time isn't running (server restart case)
+    if (isGameStarted && !isTimeRunning) {
+      console.log(`[Server] Resuming time cycle after restart`);
+      world.chatManager.sendPlayerMessage(player, '⏰ Resuming time cycle...', '00FF00');
+      TimeManager.instance.start();
+      return;
+    }
+
+    // Fresh start - initialize both
     console.log(`[Server] Game started by ${player.username}`);
     GameManager.instance.startGame();
 
@@ -132,17 +153,17 @@ startServer(async (world) => {
   });
 
   // Reset game (dev/testing)
-  world.chatManager.registerCommand('/reset', (player) => {
+  world.chatManager.registerCommand('/reset', async (player) => {
     console.log(`[Server] Game reset by ${player.username}`);
     TimeManager.instance.stop();
     GameManager.instance.resetGame();
+    await GameManager.instance.saveGameState(); // Save the reset state
     AudioManager.instance.switchMusic('day');
-    world.chatManager.sendBroadcastMessage('🔄 Game has been reset', 'FFAA00');
+    world.chatManager.sendBroadcastMessage('🔄 Game has been reset! Use /start to begin.', 'FFAA00');
   });
 
   // Help command
   world.chatManager.registerCommand('/help', (player) => {
-    world.chatManager.sendPlayerMessage(player, '   /attack - Attack nearby enemies', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '📖 Available Commands:', 'FFFF00');
     world.chatManager.sendPlayerMessage(player, '   /start - Start the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /status - Show game status', 'FFFFFF');
@@ -150,6 +171,8 @@ startServer(async (world) => {
     world.chatManager.sendPlayerMessage(player, '   /inventory (/inv) - Show inventory', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /recipes - List all recipes', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /craft <recipe_id> - Craft an item', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /use <item_id> - Use a consumable item', 'FFFFFF');
+    world.chatManager.sendPlayerMessage(player, '   /attack - Attack nearby enemies', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /gather <item> <amount> - Gather resource (dev)', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /reset - Reset the game', 'FFFFFF');
     world.chatManager.sendPlayerMessage(player, '   /time - Show time info', 'FFFFFF');
@@ -241,11 +264,33 @@ startServer(async (world) => {
     world.chatManager.sendBroadcastMessage(`⏩ ${player.username} skipped: ${oldPhase} → ${newPhase}`, 'FFFF00');
   });
 
+  // Skip to night (testing command)
+  world.chatManager.registerCommand('/skipnight', (player, args) => {
+    const nightNumber = parseInt(args[0]);
+
+    if (isNaN(nightNumber) || nightNumber < 1 || nightNumber > 99) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Usage: /skipnight <1-99>', 'FF0000');
+      world.chatManager.sendPlayerMessage(player, '   Example: /skipnight 10 (test boss fight)', 'FFAA00');
+      return;
+    }
+
+    GameManager.instance.gameState.currentNight = nightNumber;
+    GameManager.instance.saveGameState();
+
+    world.chatManager.sendBroadcastMessage(`⏩ ${player.username} skipped to Night ${nightNumber}!`, 'FFFF00');
+
+    // If it's a boss night, notify
+    const bossNights = [10, 25, 50, 75, 99];
+    if (bossNights.includes(nightNumber)) {
+      world.chatManager.sendBroadcastMessage(`🏆 Boss night! Skip to Evening to trigger boss spawn.`, 'FFD700');
+    }
+  });
+
   // Debug command
   world.chatManager.registerCommand('/debug', (player) => {
     const state = GameManager.instance.gameState;
     const playerCount = world.entityManager.getAllPlayerEntities().length;
-    const entityCount = world.entityManager.getEntities().length;
+    const entityCount = world.entityManager.getAllEntities().length;
     const currentPhase = TimeManager.instance.getCurrentPhase();
 
     world.chatManager.sendPlayerMessage(player, '🐛 Debug Info:', 'FF00FF');
@@ -280,7 +325,7 @@ startServer(async (world) => {
     world.chatManager.sendPlayerMessage(player, stats, 'FFFFFF');
   });
 
-  // Show inventory
+  // Show inventory (opens UI panel)
   world.chatManager.registerCommand('/inventory', (player) => {
     const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
     if (!playerEntity) {
@@ -288,20 +333,21 @@ startServer(async (world) => {
       return;
     }
 
-    const inventoryString = InventoryManager.instance.getInventoryString(playerEntity);
-    world.chatManager.sendPlayerMessage(player, inventoryString, 'FFFFFF');
+    // Send inventory data to UI
+    playerEntity.sendInventoryToUI();
   });
 
   // Alias for /inventory
   world.chatManager.registerCommand('/inv', (player) => {
+    console.log(`[CMD] /inv executed by ${player.username}`);
     const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
     if (!playerEntity) {
       world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
       return;
     }
 
-    const inventoryString = InventoryManager.instance.getInventoryString(playerEntity);
-    world.chatManager.sendPlayerMessage(player, inventoryString, 'FFFFFF');
+    // Send inventory data to UI
+    playerEntity.sendInventoryToUI();
   });
 
   // List all recipes
@@ -318,6 +364,7 @@ startServer(async (world) => {
 
   // Craft an item
   world.chatManager.registerCommand('/craft', (player, args) => {
+    console.log(`[CMD] /craft executed by ${player.username}`, args);
     const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
     if (!playerEntity) {
       world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
@@ -325,8 +372,9 @@ startServer(async (world) => {
     }
 
     if (args.length === 0) {
-      world.chatManager.sendPlayerMessage(player, '⚠️  Usage: /craft <recipe_id>', 'FF0000');
-      world.chatManager.sendPlayerMessage(player, '💡 Use /recipes to see available recipes', 'FFAA00');
+      console.log('[CMD] Opening crafting UI panel');
+      // Open crafting UI panel
+      playerEntity.sendCraftingToUI();
       return;
     }
 
@@ -416,6 +464,24 @@ startServer(async (world) => {
         'FFAA00'
       );
     }
+  });
+
+  // Use item command
+  world.chatManager.registerCommand('/use', (player, args) => {
+    const playerEntity = world.entityManager.getPlayerEntitiesByPlayer(player)[0] as GamePlayerEntity;
+    if (!playerEntity) {
+      world.chatManager.sendPlayerMessage(player, '❌ Player entity not found', 'FF0000');
+      return;
+    }
+
+    if (args.length === 0) {
+      world.chatManager.sendPlayerMessage(player, '⚠️  Usage: /use <item_id>', 'FF0000');
+      world.chatManager.sendPlayerMessage(player, '💡 Example: /use healing_potion', 'FFAA00');
+      return;
+    }
+
+    const itemId = args[0];
+    playerEntity.useItem(itemId);
   });
 
   console.log('='.repeat(60));
