@@ -44,17 +44,37 @@ export default class NightManager {
 
     console.log(`[NightManager] Night ${nightNumber} begins - spawning enemies`);
 
-    // Calculate difficulty based on night number
-    this.maxEnemiesThisNight = this.calculateMaxEnemies(nightNumber);
-    const spawnRate = this.calculateSpawnRate(nightNumber);
+    // Check if this is a boss night
+    const isBossNight = this.isBossNight(nightNumber);
 
-    this.world.chatManager.sendBroadcastMessage(
-      `👹 Enemies approach! (Wave: ${this.maxEnemiesThisNight} enemies)`,
-      'FF0000'
-    );
+    if (isBossNight) {
+      // Boss night!
+      import('./AudioManager').then(({ default: AudioManager }) => {
+        AudioManager.instance.playBossMusic();
+      });
 
-    // Start spawning enemies
-    this.startSpawning(nightNumber, spawnRate);
+      this.world.chatManager.sendBroadcastMessage('='.repeat(50), 'FFD700');
+      this.world.chatManager.sendBroadcastMessage(`⚠️  BOSS NIGHT ${nightNumber} ⚠️`, 'FFD700');
+      this.world.chatManager.sendBroadcastMessage('A powerful enemy approaches...', 'FFD700');
+      this.world.chatManager.sendBroadcastMessage('='.repeat(50), 'FFD700');
+
+      // Spawn boss immediately
+      this.spawnBoss(nightNumber);
+      this.maxEnemiesThisNight = 1; // Only the boss
+    } else {
+      // Normal night
+      // Calculate difficulty based on night number
+      this.maxEnemiesThisNight = this.calculateMaxEnemies(nightNumber);
+      const spawnRate = this.calculateSpawnRate(nightNumber);
+
+      this.world.chatManager.sendBroadcastMessage(
+        `👹 Enemies approach! (Wave: ${this.maxEnemiesThisNight} enemies)`,
+        'FF0000'
+      );
+
+      // Start spawning enemies
+      this.startSpawning(nightNumber, spawnRate);
+    }
   }
 
   /**
@@ -206,5 +226,83 @@ export default class NightManager {
    */
   public isActive(): boolean {
     return this.isNightActive;
+  }
+
+  /**
+   * Check if this is a boss night
+   */
+  private isBossNight(nightNumber: number): boolean {
+    const bossNights = [10, 25, 50, 75, 99];
+    return bossNights.includes(nightNumber);
+  }
+
+  /**
+   * Spawn a boss enemy for milestone nights
+   */
+  private spawnBoss(nightNumber: number) {
+    if (!this.world) return;
+
+    const gameManager = GameManager.instance;
+
+    // Select boss based on night number
+    let bossId: string;
+    if (nightNumber >= 99) {
+      bossId = 'ancient_guardian'; // Final boss
+    } else if (nightNumber >= 75) {
+      bossId = 'ancient_guardian';
+    } else if (nightNumber >= 50) {
+      bossId = 'hollow_stag';
+    } else if (nightNumber >= 25) {
+      bossId = 'hollow_stag';
+    } else {
+      bossId = 'hollow_stag'; // Night 10
+    }
+
+    const bossConfig = gameManager.enemiesConfig[bossId];
+    if (!bossConfig) {
+      console.error(`[NightManager] Boss not found: ${bossId}`);
+      return;
+    }
+
+    // Create boss entity with isBoss flag
+    const boss = new BaseEnemyEntity(bossConfig, true);
+
+    // Spawn boss near spawn (closer than regular enemies)
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 25; // Closer spawn for dramatic effect
+    const spawnPos = {
+      x: Math.cos(angle) * radius,
+      y: 20,
+      z: Math.sin(angle) * radius,
+    };
+
+    boss.spawn(this.world, spawnPos);
+
+    // Track boss
+    this.activeEnemies.add(boss);
+    this.enemiesSpawned++;
+
+    // Remove from tracking when defeated
+    boss.on('despawn' as any, () => {
+      this.activeEnemies.delete(boss);
+
+      // Boss defeated! Celebration
+      if (this.world) {
+        this.world.chatManager.sendBroadcastMessage('='.repeat(50), '00FF00');
+        this.world.chatManager.sendBroadcastMessage(`🎉 ${bossConfig.name} DEFEATED! 🎉`, '00FF00');
+        this.world.chatManager.sendBroadcastMessage('='.repeat(50), '00FF00');
+
+        // Return to normal night music
+        import('./AudioManager').then(({ default: AudioManager }) => {
+          AudioManager.instance.switchMusic('night');
+        });
+      }
+    });
+
+    console.log(`[NightManager] Spawned BOSS: ${bossConfig.name} for night ${nightNumber}`);
+    this.world.chatManager.sendBroadcastMessage(
+      `💀 ${bossConfig.name} has appeared! 💀`,
+      'FF0000'
+    );
   }
 }

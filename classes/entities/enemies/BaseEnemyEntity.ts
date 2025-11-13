@@ -1,4 +1,4 @@
-import { Entity, EntityEvent, World } from 'hytopia';
+import { Entity, EntityEvent, World, RigidBodyType } from 'hytopia';
 import type { EnemyConfig } from '../../../types/gameTypes';
 import EnemyController from '../../controllers/EnemyController';
 import GameManager from '../../managers/GameManager';
@@ -16,49 +16,54 @@ export default class BaseEnemyEntity extends Entity {
   public health: number;
   public maxHealth: number;
   public isDead: boolean = false;
+  public isBoss: boolean = false; // Track if this is a boss enemy
   private attackCooldown: number = 0;
   private readonly ATTACK_COOLDOWN_MS = 1000; // 1 second between attacks
 
-  constructor(config: EnemyConfig) {
+  constructor(config: EnemyConfig, isBoss: boolean = false) {
     super({
       modelUri: config.modelUri,
       modelScale: (config as any).modelScale || 1.0,
-      modelTintColor: (config as any).modelTint || undefined,
       modelLoopedAnimations: ['idle'],
       name: config.name,
+      tag: 'enemy', // Use tag option instead of addTag method
       rigidBodyOptions: {
+        type: RigidBodyType.DYNAMIC,
         enabledRotations: { x: false, y: true, z: false },
-        enabledTranslations: { x: true, y: true, z: true },
       },
     });
 
     this.config = config;
     this.health = config.health;
     this.maxHealth = config.health;
+    this.isBoss = isBoss;
 
-    // Add tags for identification
-    this.addTag('enemy');
-    this.addTag(config.id);
+    // Setup spawn event listener
+    this.on(EntityEvent.SPAWN, () => {
+      // If this is a boss, send UI message to all players
+      if (this.isBoss) {
+        this.broadcastBossSpawn();
+      }
+      // Apply tint color if specified
+      if ((config as any).modelTint) {
+        this.setTintColor((config as any).modelTint);
+      }
 
-    console.log(`[BaseEnemyEntity] Created ${config.name}`);
-  }
+      // Attach AI controller
+      const controller = new EnemyController(this);
+      this.setController(controller);
 
-  /**
-   * Called when entity spawns
-   */
-  async onSpawn() {
-    await super.onSpawn();
+      // Listen for collisions with players
+      this.on(EntityEvent.ENTITY_COLLISION, ({ otherEntity, started }) => {
+        if (started) {
+          this.onCollisionWithPlayer(otherEntity);
+        }
+      });
 
-    // Attach AI controller
-    const controller = new EnemyController(this);
-    this.setEntityController(controller);
-
-    // Listen for collisions with players
-    this.on(EntityEvent.COLLISION_START, ({ otherEntity }) => {
-      this.onCollisionWithPlayer(otherEntity);
+      console.log(`[BaseEnemyEntity] ${this.config.name} spawned at ${JSON.stringify(this.position)}`);
     });
 
-    console.log(`[BaseEnemyEntity] ${this.config.name} spawned at ${JSON.stringify(this.position)}`);
+    console.log(`[BaseEnemyEntity] Created ${config.name}`);
   }
 
   /**
@@ -84,7 +89,7 @@ export default class BaseEnemyEntity extends Entity {
    * Attack a player
    */
   private attackPlayer(playerEntity: GamePlayerEntity) {
-    if (this.isDead) return;
+    if (this.isDead || !this.world) return;
 
     playerEntity.takeDamage(this.config.damage);
 
@@ -92,7 +97,7 @@ export default class BaseEnemyEntity extends Entity {
     AudioManager.instance.playSFX('audio/sfx/damage/hit.mp3', 0.6, this.position);
 
     this.world.chatManager.sendPlayerMessage(
-      playerEntity,
+      playerEntity.player,
       `§c${this.config.name} attacks you for ${this.config.damage} damage!`
     );
 
@@ -106,6 +111,11 @@ export default class BaseEnemyEntity extends Entity {
     if (this.isDead) return;
 
     this.health = Math.max(0, this.health - amount);
+
+    // If this is a boss, broadcast health update to all players
+    if (this.isBoss) {
+      this.broadcastBossHealth();
+    }
 
     // Play hurt sound based on enemy type
     const hurtSounds = {
@@ -133,10 +143,20 @@ export default class BaseEnemyEntity extends Entity {
    * Handle enemy death
    */
   private die(killer?: GamePlayerEntity) {
-    if (this.isDead) return;
+    if (this.isDead || !this.world) return;
 
     this.isDead = true;
     console.log(`[BaseEnemyEntity] ${this.config.name} died`);
+
+    // If this is a boss, broadcast defeat message
+    if (this.isBoss) {
+      this.broadcastBossDefeated();
+
+      // Boss victory rewards
+      if (killer) {
+        this.grantBossRewards(killer);
+      }
+    }
 
     // Play death sound based on enemy type
     const deathSounds = {
@@ -153,11 +173,11 @@ export default class BaseEnemyEntity extends Entity {
 
     AudioManager.instance.playSFX(deathSounds[soundKey], 0.7, this.position);
 
-    // Award XP to killer
-    if (killer) {
+    // Award XP to killer (skip if boss, boss rewards handled separately)
+    if (killer && !this.isBoss) {
       killer.addXP(this.config.xpReward);
       this.world.chatManager.sendPlayerMessage(
-        killer,
+        killer.player,
         `§a+${this.config.xpReward} XP for defeating ${this.config.name}!`
       );
     }
@@ -173,7 +193,9 @@ export default class BaseEnemyEntity extends Entity {
 
     // Despawn after a short delay
     setTimeout(() => {
-      this.despawn();
+      if (this.isSpawned) {
+        this.despawn();
+      }
     }, 500);
   }
 
@@ -182,6 +204,8 @@ export default class BaseEnemyEntity extends Entity {
    */
   private dropLoot(nearPlayer?: GamePlayerEntity) {
     const gameManager = GameManager.instance;
+
+    if (!this.world) return;
 
     // Load loot table config
     import('../../../config/loot_tables.json').then((lootTablesModule) => {
@@ -204,14 +228,14 @@ export default class BaseEnemyEntity extends Entity {
         );
 
         // Give directly to nearby player (for MVP, we'll improve this in Phase 5)
-        if (nearPlayer) {
+        if (nearPlayer && this.world) {
           const added = nearPlayer.addItemToInventory(drop.itemId, quantity);
           if (added) {
             const itemConfig = gameManager.itemsConfig[drop.itemId];
             const itemName = itemConfig?.name || drop.itemId;
 
             this.world.chatManager.sendPlayerMessage(
-              nearPlayer,
+              nearPlayer.player,
               `§e+${quantity}x ${itemName}`
             );
           }
@@ -227,5 +251,94 @@ export default class BaseEnemyEntity extends Entity {
    */
   public getHealthPercent(): number {
     return this.health / this.maxHealth;
+  }
+
+  /**
+   * Broadcast boss spawn to all players
+   */
+  private broadcastBossSpawn() {
+    if (!this.world) return;
+
+    const players = this.world.entityManager.getAllPlayerEntities();
+    for (const playerEntity of players) {
+      const player = (playerEntity as GamePlayerEntity).player;
+      if (player?.ui) {
+        player.ui.sendData({
+          type: 'boss_spawn',
+          name: this.config.name,
+          health: this.health,
+          maxHealth: this.maxHealth,
+        });
+      }
+    }
+
+    console.log(`[BaseEnemyEntity] Broadcast boss spawn: ${this.config.name}`);
+  }
+
+  /**
+   * Broadcast boss health update to all players
+   */
+  private broadcastBossHealth() {
+    if (!this.world) return;
+
+    const players = this.world.entityManager.getAllPlayerEntities();
+    for (const playerEntity of players) {
+      const player = (playerEntity as GamePlayerEntity).player;
+      if (player?.ui) {
+        player.ui.sendData({
+          type: 'boss_health',
+          health: this.health,
+          maxHealth: this.maxHealth,
+        });
+      }
+    }
+  }
+
+  /**
+   * Broadcast boss defeated to all players
+   */
+  private broadcastBossDefeated() {
+    if (!this.world) return;
+
+    const players = this.world.entityManager.getAllPlayerEntities();
+    for (const playerEntity of players) {
+      const player = (playerEntity as GamePlayerEntity).player;
+      if (player?.ui) {
+        player.ui.sendData({
+          type: 'boss_defeated',
+        });
+      }
+    }
+
+    console.log(`[BaseEnemyEntity] Broadcast boss defeated: ${this.config.name}`);
+  }
+
+  /**
+   * Grant special rewards for defeating a boss
+   */
+  private grantBossRewards(killer: GamePlayerEntity) {
+    if (!this.world) return;
+
+    // Calculate bonus XP (5x normal XP for bosses)
+    const bonusXP = this.config.xpReward * 5;
+    killer.addXP(bonusXP);
+
+    // Send notification to killer
+    this.world.chatManager.sendPlayerMessage(
+      killer.player,
+      `§6✨ BOSS DEFEATED! +${bonusXP} Bonus XP!`,
+      'FFD700'
+    );
+
+    // Broadcast to all players
+    this.world.chatManager.sendBroadcastMessage(
+      `🎉 ${killer.player.username} defeated ${this.config.name}!`,
+      '00FF00'
+    );
+
+    // TODO: Add special boss loot drops in the future
+    // For now, bosses use the same loot table as regular enemies
+
+    console.log(`[BaseEnemyEntity] Boss rewards granted to ${killer.player.username}`);
   }
 }
