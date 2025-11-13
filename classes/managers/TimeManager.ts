@@ -1,4 +1,4 @@
-import { World } from 'hytopia';
+import { World, PlayerManager } from 'hytopia';
 import { DayPhase } from '../../types/gameTypes';
 import GameManager from './GameManager';
 import AudioManager from './AudioManager';
@@ -59,10 +59,17 @@ export default class TimeManager {
   private elapsedMs: number = 0;
   private lastTickTime: number = Date.now();
   private tickInterval: NodeJS.Timeout | undefined;
-  private isRunning: boolean = false;
+  private _isRunning: boolean = false;
 
   private constructor() {
     console.log('[TimeManager] Instance created');
+  }
+
+  /**
+   * Check if the time cycle is currently running
+   */
+  public isRunning(): boolean {
+    return this._isRunning;
   }
 
   /**
@@ -77,7 +84,7 @@ export default class TimeManager {
    * Start the day/night cycle
    */
   public start() {
-    if (this.isRunning) {
+    if (this._isRunning) {
       console.warn('[TimeManager] Already running');
       return;
     }
@@ -87,7 +94,7 @@ export default class TimeManager {
       return;
     }
 
-    this.isRunning = true;
+    this._isRunning = true;
     this.elapsedMs = 0;
     this.currentPhase = DayPhase.MORNING;
     this.lastTickTime = Date.now();
@@ -106,11 +113,11 @@ export default class TimeManager {
    * Stop the day/night cycle
    */
   public stop() {
-    if (!this.isRunning) {
+    if (!this._isRunning) {
       return;
     }
 
-    this.isRunning = false;
+    this._isRunning = false;
 
     if (this.tickInterval) {
       clearInterval(this.tickInterval);
@@ -124,7 +131,7 @@ export default class TimeManager {
    * Main tick function - called every second
    */
   private tick() {
-    if (!this.world || !this.isRunning) return;
+    if (!this.world || !this._isRunning) return;
 
     const now = Date.now();
     const delta = now - this.lastTickTime;
@@ -350,7 +357,7 @@ export default class TimeManager {
     if (!this.world) return;
 
     const nightNumber = GameManager.instance.gameState.currentNight;
-    const players = this.world.getAllPlayers();
+    const players = PlayerManager.instance.getConnectedPlayersByWorld(this.world);
 
     for (const player of players) {
       player.ui.sendData({
@@ -367,12 +374,22 @@ export default class TimeManager {
   private broadcastPhaseBanner(phase: DayPhase) {
     if (!this.world) return;
 
-    const players = this.world.getAllPlayers();
+    const phaseBanners: Record<DayPhase, { title: string; subtitle: string }> = {
+      [DayPhase.MORNING]: { title: '☀️ MORNING', subtitle: 'Gather resources and prepare' },
+      [DayPhase.AFTERNOON]: { title: '🌤️ AFTERNOON', subtitle: 'Time to explore and expand' },
+      [DayPhase.EVENING]: { title: '🌅 EVENING', subtitle: 'Night is approaching...' },
+      [DayPhase.NIGHT]: { title: '🌙 NIGHT FALLS', subtitle: 'Defend yourself!' },
+      [DayPhase.DAWN]: { title: '🌄 DAWN', subtitle: 'You survived the night!' },
+    };
+
+    const banner = phaseBanners[phase];
+    const players = PlayerManager.instance.getConnectedPlayersByWorld(this.world);
 
     for (const player of players) {
       player.ui.sendData({
         type: 'phase_change',
-        phase: phase,
+        title: banner.title,
+        subtitle: banner.subtitle,
       });
     }
   }

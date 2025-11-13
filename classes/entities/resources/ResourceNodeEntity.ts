@@ -1,4 +1,4 @@
-import { Entity, EntityEvent } from 'hytopia';
+import { Entity, EntityEvent, RigidBodyType } from 'hytopia';
 import GamePlayerEntity from '../GamePlayerEntity';
 import AudioManager from '../../managers/AudioManager';
 
@@ -32,35 +32,36 @@ export default class ResourceNodeEntity extends Entity {
       modelUri: config.modelUri,
       modelScale: config.modelScale || 1.0,
       name: config.itemName,
+      tag: 'resource', // Set primary tag in constructor
       rigidBodyOptions: {
-        enabledRotations: { x: false, y: false, z: false },
-        enabledTranslations: { x: false, y: false, z: false },
+        type: RigidBodyType.FIXED,
       },
     });
 
     this.config = config;
-  }
 
-  async onSpawn() {
-    await super.onSpawn();
+    // Setup spawn event listener
+    this.on(EntityEvent.SPAWN, () => {
+      // Note: SDK 0.11.x doesn't have EntityEvent.INTERACT
+      // Interaction must be implemented via raycasting in player controller
+      // and calling the interact() method manually
 
-    // Add tags for identification (do this after spawn)
-    this.addTag('resource');
-    this.addTag(`resource_${this.config.type}`);
-    this.addTag(this.config.itemId);
-
-    // Listen for player interactions
-    this.on(EntityEvent.INTERACT, ({ player }) => {
-      this.onPlayerInteract(player);
+      console.log(`[ResourceNode] ${this.config.itemName} spawned at ${JSON.stringify(this.position)}`);
     });
 
-    console.log(`[ResourceNode] ${this.config.itemName} spawned at ${JSON.stringify(this.position)}`);
+    // Setup despawn event listener
+    this.on(EntityEvent.DESPAWN, () => {
+      if (this.respawnTimeout) {
+        clearTimeout(this.respawnTimeout);
+      }
+    });
   }
 
   /**
    * Handle player interaction
+   * This method should be called from player's interaction code (raycast + interact())
    */
-  private async onPlayerInteract(player: any) {
+  public async interact(player: any) {
     if (this.isDepleted) {
       this.world.chatManager.sendPlayerMessage(
         player,
@@ -111,8 +112,35 @@ export default class ResourceNodeEntity extends Entity {
       'FFFF00'
     );
 
-    // Wait for gather time
-    await new Promise(resolve => setTimeout(resolve, this.config.gatherTime));
+    // Send gathering start UI message
+    player.ui.sendData({
+      type: 'gathering_start',
+      resourceName: this.config.itemName,
+    });
+
+    // Wait for gather time with progress updates
+    const startTime = Date.now();
+    const updateInterval = 100; // Update every 100ms
+    const gatherPromise = new Promise<void>(resolve => {
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(100, (elapsed / this.config.gatherTime) * 100);
+
+        // Send progress update
+        player.ui.sendData({
+          type: 'gathering_progress',
+          resourceName: this.config.itemName,
+          progress: progress,
+        });
+
+        if (elapsed >= this.config.gatherTime) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, updateInterval);
+    });
+
+    await gatherPromise;
 
     // Calculate yield
     const yield_amount = Math.floor(
@@ -132,9 +160,19 @@ export default class ResourceNodeEntity extends Entity {
       // Play success sound
       AudioManager.instance.playSFX('audio/sfx/ui/notification-1.mp3', 0.5);
 
+      // Send gathering complete UI message
+      player.ui.sendData({
+        type: 'gathering_complete',
+      });
+
       // Deplete the resource
       this.deplete();
     } else {
+      // Hide gathering progress on failure
+      player.ui.sendData({
+        type: 'gathering_complete',
+      });
+
       this.world.chatManager.sendPlayerMessage(
         player,
         `❌ Inventory full!`,
@@ -151,8 +189,8 @@ export default class ResourceNodeEntity extends Entity {
   private deplete() {
     this.isDepleted = true;
 
-    // Visual feedback - make it semi-transparent or hide it
-    this.setModelTintColor({ r: 0.5, g: 0.5, b: 0.5, a: 0.3 });
+    // Visual feedback - make it semi-transparent
+    this.setTintColor({ r: 128, g: 128, b: 128 });
 
     // Schedule respawn if configured
     if (this.config.respawnTime) {
@@ -164,7 +202,9 @@ export default class ResourceNodeEntity extends Entity {
     } else {
       // Permanent depletion - despawn after a delay
       setTimeout(() => {
-        this.despawn();
+        if (this.isSpawned) {
+          this.despawn();
+        }
       }, 5000);
 
       console.log(`[ResourceNode] ${this.config.itemName} permanently depleted`);
@@ -179,22 +219,11 @@ export default class ResourceNodeEntity extends Entity {
     this.isBeingGathered = false;
 
     // Restore visual
-    this.setModelTintColor({ r: 1, g: 1, b: 1, a: 1 });
+    this.setTintColor({ r: 255, g: 255, b: 255 });
 
     // Play respawn sound
     AudioManager.instance.playSFX('audio/sfx/ui/notification-1.mp3', 0.3, this.position);
 
     console.log(`[ResourceNode] ${this.config.itemName} respawned`);
-  }
-
-  /**
-   * Cleanup on despawn
-   */
-  async onDespawn() {
-    if (this.respawnTimeout) {
-      clearTimeout(this.respawnTimeout);
-    }
-
-    await super.onDespawn();
   }
 }
