@@ -112,6 +112,9 @@ export default class BaseEnemyEntity extends Entity {
 
     this.health = Math.max(0, this.health - amount);
 
+    // Broadcast damage number to attacker and nearby players
+    this.showDamageNumber(amount, attacker);
+
     // If this is a boss, broadcast health update to all players
     if (this.isBoss) {
       this.broadcastBossHealth();
@@ -340,5 +343,58 @@ export default class BaseEnemyEntity extends Entity {
     // For now, bosses use the same loot table as regular enemies
 
     console.log(`[BaseEnemyEntity] Boss rewards granted to ${killer.player.username}`);
+  }
+
+  /**
+   * Show damage number to players
+   */
+  private showDamageNumber(damage: number, attacker?: GamePlayerEntity) {
+    if (!this.world) return;
+
+    // Determine damage type
+    const damageType = this.isBoss ? 'boss' : 'normal';
+
+    // TODO: Implement critical hits (10% chance for 2x damage)
+    const isCritical = false;
+
+    // Send to attacker if exists
+    if (attacker?.player?.ui) {
+      attacker.player.ui.sendData({
+        type: 'damage_3d',
+        damage: damage,
+        x: this.position.x,
+        y: this.position.y + 1, // Above enemy center
+        z: this.position.z,
+        damageType: damageType,
+        isCritical: isCritical,
+      });
+    }
+
+    // Also send to nearby players (spectators)
+    const nearbyPlayers = this.world.entityManager.getAllPlayerEntities()
+      .filter(pe => {
+        const player = (pe as GamePlayerEntity).player;
+        if (!player || player === attacker?.player) return false;
+
+        const dx = pe.position.x - this.position.x;
+        const dz = pe.position.z - this.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        return distance < 30; // Show to players within 30 blocks
+      });
+
+    for (const playerEntity of nearbyPlayers) {
+      const player = (playerEntity as GamePlayerEntity).player;
+      if (player?.ui) {
+        player.ui.sendData({
+          type: 'damage_3d',
+          damage: damage,
+          x: this.position.x,
+          y: this.position.y + 1,
+          z: this.position.z,
+          damageType: damageType,
+          isCritical: isCritical,
+        });
+      }
+    }
   }
 }
