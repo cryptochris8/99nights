@@ -1,6 +1,7 @@
 import { Entity, EntityEvent, RigidBodyType } from 'hytopia';
 import GamePlayerEntity from '../GamePlayerEntity';
 import AudioManager from '../../managers/AudioManager';
+import GameManager from '../../managers/GameManager';
 
 /**
  * ResourceNodeEntity
@@ -156,6 +157,9 @@ export default class ResourceNodeEntity extends Entity {
     const added = playerEntity.addItemToInventory(this.config.itemId, yield_amount);
 
     if (added) {
+      // Track resource gathering for statistics
+      GameManager.instance.incrementResourcesGathered();
+
       this.world.chatManager.sendPlayerMessage(
         player,
         `✅ Gathered ${yield_amount}x ${this.config.itemName}!`,

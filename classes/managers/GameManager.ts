@@ -28,6 +28,14 @@ export default class GameManager {
   public zonesConfig: Record<string, ZoneConfig> = {};
   public persistenceManager: PersistenceManager;
 
+  // Game statistics for victory screen
+  public gameStats = {
+    enemiesDefeated: 0,
+    resourcesGathered: 0,
+    timePlayed: 0,
+    startTime: 0,
+  };
+
   private constructor() {
     console.log('[GameManager] Instance created');
   }
@@ -45,7 +53,7 @@ export default class GameManager {
       console.log('[GameManager] Loading config files...');
 
       const itemsData = await import('../../config/items.json');
-      this.itemsConfig = itemsData.default || itemsData;
+      this.itemsConfig = (itemsData.default || itemsData) as Record<string, ItemConfig>;
       console.log(`[GameManager] Loaded ${Object.keys(this.itemsConfig).length} items`);
 
       const recipesData = await import('../../config/recipes.json');
@@ -68,7 +76,7 @@ export default class GameManager {
     try {
       const savedState = await this.persistenceManager.getGlobalData('gameState');
       if (savedState) {
-        this.gameState = savedState as GameState;
+        this.gameState = savedState as unknown as GameState;
         console.log('[GameManager] Loaded saved game state:', this.gameState);
       } else {
         console.log('[GameManager] No saved state found, using defaults');
@@ -90,7 +98,7 @@ export default class GameManager {
     }
 
     try {
-      await this.persistenceManager.setGlobalData('gameState', this.gameState);
+      await this.persistenceManager.setGlobalData('gameState', this.gameState as any);
       console.log('[GameManager] Game state saved:', this.gameState);
     } catch (error) {
       console.error('[GameManager] Failed to save game state:', error);
@@ -114,6 +122,11 @@ export default class GameManager {
     this.gameState.isStarted = true;
     this.gameState.currentNight = 1;
     this.gameState.currentPhase = 'morning' as DayPhase;
+
+    // Initialize game statistics
+    this.gameStats.startTime = Date.now();
+    this.gameStats.enemiesDefeated = 0;
+    this.gameStats.resourcesGathered = 0;
 
     console.log('[GameManager] Game started!');
     this.world.chatManager.sendBroadcastMessage('🌲 99 Nights in the Forest has begun!', '00FF00');
@@ -161,11 +174,51 @@ export default class GameManager {
     if (!this.world) return;
 
     console.log('[GameManager] VICTORY! 99 nights survived!');
-    this.world.chatManager.sendBroadcastMessage('🎉 VICTORY! You have broken the curse!', 'FFD700');
-    this.world.chatManager.sendBroadcastMessage('🌟 The Ancient Grove is restored!', 'FFD700');
+
+    // Calculate time played
+    this.gameStats.timePlayed = Date.now() - this.gameStats.startTime;
+
+    // Play victory music
+    import('./AudioManager').then(({ default: AudioManager }) => {
+      AudioManager.instance.playVictoryMusic();
+    });
+
+    // Epic victory ceremony
+    this.world.chatManager.sendBroadcastMessage('='.repeat(60), 'FFD700');
+    this.world.chatManager.sendBroadcastMessage('', 'FFFFFF');
+    this.world.chatManager.sendBroadcastMessage('🎉✨ VICTORY! ✨🎉', 'FFD700');
+    this.world.chatManager.sendBroadcastMessage('', 'FFFFFF');
+    this.world.chatManager.sendBroadcastMessage('You have survived all 99 nights!', 'FFFFFF');
+    this.world.chatManager.sendBroadcastMessage('The curse is broken!', '00FF00');
+    this.world.chatManager.sendBroadcastMessage('The Ancient Grove has been restored!', '00FF00');
+    this.world.chatManager.sendBroadcastMessage('', 'FFFFFF');
+    this.world.chatManager.sendBroadcastMessage('🌲 Peace returns to the forest... 🌲', '00FF00');
+    this.world.chatManager.sendBroadcastMessage('', 'FFFFFF');
+    this.world.chatManager.sendBroadcastMessage('='.repeat(60), 'FFD700');
+
+    // Award all players with XP bonus
+    const allPlayers = this.world.entityManager.getAllPlayerEntities();
+    for (const playerEntity of allPlayers) {
+      const gamePlayer = playerEntity as any;
+      if (gamePlayer.addXP) {
+        gamePlayer.addXP(1000); // Huge XP reward
+        if (gamePlayer.player) {
+          this.world.chatManager.sendPlayerMessage(
+            gamePlayer.player,
+            '🌟 +1000 XP for completing the game!',
+            'FFD700'
+          );
+        }
+      }
+    }
 
     this.gameState.isStarted = false;
     this.saveGameState();
+
+    // Stop time cycle
+    import('./TimeManager').then(({ default: TimeManager }) => {
+      TimeManager.instance.stop();
+    });
   }
 
   /**
@@ -178,6 +231,28 @@ export default class GameManager {
     if (oldPhase !== phase) {
       console.log(`[GameManager] Phase changed: ${oldPhase} -> ${phase}`);
     }
+  }
+
+  /**
+   * Increment enemies defeated stat
+   */
+  public incrementEnemiesDefeated() {
+    this.gameStats.enemiesDefeated++;
+  }
+
+  /**
+   * Increment resources gathered stat
+   */
+  public incrementResourcesGathered() {
+    this.gameStats.resourcesGathered++;
+  }
+
+  /**
+   * Get current play time in milliseconds
+   */
+  public getPlayTime(): number {
+    if (this.gameStats.startTime === 0) return 0;
+    return Date.now() - this.gameStats.startTime;
   }
 
   /**

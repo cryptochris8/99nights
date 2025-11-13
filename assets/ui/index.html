@@ -488,6 +488,165 @@
     }
   }
 
+  /* ===== VICTORY SCREEN ===== */
+  #victory-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(10, 10, 30, 0.98), rgba(20, 10, 40, 0.98));
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    animation: victoryFadeIn 1s ease-out;
+  }
+
+  @keyframes victoryFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .victory-container {
+    max-width: 800px;
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, rgba(40, 20, 60, 0.9), rgba(60, 30, 80, 0.9));
+    border: 4px solid #ffd700;
+    border-radius: 20px;
+    box-shadow: 0 0 60px rgba(255, 215, 0, 0.5);
+    animation: victoryPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes victoryPulse {
+    0%, 100% {
+      box-shadow: 0 0 60px rgba(255, 215, 0, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 80px rgba(255, 215, 0, 0.8);
+    }
+  }
+
+  .victory-title {
+    font-size: 72px;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow:
+      0 0 20px rgba(255, 215, 0, 0.8),
+      0 0 40px rgba(255, 215, 0, 0.6),
+      4px 4px 8px rgba(0, 0, 0, 0.9);
+    margin-bottom: 20px;
+    animation: victoryGlow 1.5s ease-in-out infinite;
+  }
+
+  @keyframes victoryGlow {
+    0%, 100% {
+      text-shadow:
+        0 0 20px rgba(255, 215, 0, 0.8),
+        0 0 40px rgba(255, 215, 0, 0.6),
+        4px 4px 8px rgba(0, 0, 0, 0.9);
+    }
+    50% {
+      text-shadow:
+        0 0 30px rgba(255, 215, 0, 1),
+        0 0 60px rgba(255, 215, 0, 0.8),
+        4px 4px 8px rgba(0, 0, 0, 0.9);
+    }
+  }
+
+  .victory-subtitle {
+    font-size: 28px;
+    color: #fff;
+    margin-bottom: 40px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .victory-stats {
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 40px;
+  }
+
+  .victory-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 20px;
+  }
+
+  .victory-stat:last-child {
+    border-bottom: none;
+  }
+
+  .victory-stat-label {
+    color: #bbb;
+    font-weight: 600;
+  }
+
+  .victory-stat-value {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 24px;
+  }
+
+  .victory-rewards {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+    border: 2px solid #ffd700;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+
+  .victory-rewards-title {
+    font-size: 24px;
+    color: #ffd700;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+
+  .victory-reward-item {
+    font-size: 18px;
+    color: #fff;
+    margin: 8px 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .victory-button {
+    background: linear-gradient(135deg, #ffd700, #ffb700);
+    border: 3px solid #fff;
+    border-radius: 12px;
+    padding: 18px 48px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+    pointer-events: auto;
+  }
+
+  .victory-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.7);
+    background: linear-gradient(135deg, #ffed4e, #ffd700);
+  }
+
+  .victory-button:active {
+    transform: scale(0.98);
+  }
+
   /* ===== INVENTORY PANEL ===== */
   #inventory-panel {
     position: fixed;
@@ -944,6 +1103,50 @@
   </div>
   <div class="recipe-list" id="recipe-list">
     <!-- Generated dynamically -->
+  </div>
+</div>
+
+<!-- Victory Screen (Hidden by default) -->
+<div id="victory-screen" class="hidden">
+  <div class="victory-container">
+    <div class="victory-title">🎉 VICTORY! 🎉</div>
+    <div class="victory-subtitle">You survived all 99 nights!</div>
+
+    <div class="victory-stats">
+      <div class="victory-stat">
+        <span class="victory-stat-label">🌙 Nights Survived</span>
+        <span class="victory-stat-value" id="victory-nights">99</span>
+      </div>
+      <div class="victory-stat">
+        <span class="victory-stat-label">⚔️ Enemies Defeated</span>
+        <span class="victory-stat-value" id="victory-enemies">0</span>
+      </div>
+      <div class="victory-stat">
+        <span class="victory-stat-label">🌲 Resources Gathered</span>
+        <span class="victory-stat-value" id="victory-resources">0</span>
+      </div>
+      <div class="victory-stat">
+        <span class="victory-stat-label">💀 Boss Fights Won</span>
+        <span class="victory-stat-value" id="victory-bosses">5</span>
+      </div>
+      <div class="victory-stat">
+        <span class="victory-stat-label">✨ Final Level</span>
+        <span class="victory-stat-value" id="victory-level">1</span>
+      </div>
+      <div class="victory-stat">
+        <span class="victory-stat-label">⏱️ Time Played</span>
+        <span class="victory-stat-value" id="victory-time">0h 0m</span>
+      </div>
+    </div>
+
+    <div class="victory-rewards">
+      <div class="victory-rewards-title">🏆 Legendary Rewards Unlocked!</div>
+      <div class="victory-reward-item">⭐ Champion of the Forest Title</div>
+      <div class="victory-reward-item">🎖️ Master Survivor Achievement</div>
+      <div class="victory-reward-item">💎 Eternal Glory & Bragging Rights</div>
+    </div>
+
+    <button class="victory-button" id="victory-continue">Continue Playing</button>
   </div>
 </div>
 
@@ -1480,6 +1683,40 @@
         this.activeResourceTimers.delete(posKey);
       }
     },
+
+    // ===== VICTORY SCREEN =====
+    showVictoryScreen(stats) {
+      const victoryScreen = document.getElementById('victory-screen');
+
+      // Update stats
+      if (stats.nightsSurvived !== undefined) {
+        document.getElementById('victory-nights').textContent = stats.nightsSurvived;
+      }
+      if (stats.enemiesDefeated !== undefined) {
+        document.getElementById('victory-enemies').textContent = stats.enemiesDefeated;
+      }
+      if (stats.resourcesGathered !== undefined) {
+        document.getElementById('victory-resources').textContent = stats.resourcesGathered;
+      }
+      if (stats.bossesDefeated !== undefined) {
+        document.getElementById('victory-bosses').textContent = stats.bossesDefeated;
+      }
+      if (stats.finalLevel !== undefined) {
+        document.getElementById('victory-level').textContent = stats.finalLevel;
+      }
+      if (stats.timePlayed !== undefined) {
+        const hours = Math.floor(stats.timePlayed / 3600000);
+        const minutes = Math.floor((stats.timePlayed % 3600000) / 60000);
+        document.getElementById('victory-time').textContent = `${hours}h ${minutes}m`;
+      }
+
+      victoryScreen.classList.remove('hidden');
+      console.log('[UI] Victory screen shown!');
+    },
+
+    hideVictoryScreen() {
+      document.getElementById('victory-screen').classList.add('hidden');
+    },
   };
 
   // ===== HYTOPIA DATA HANDLER =====
@@ -1599,6 +1836,11 @@
         UI.hideResourceTimer(data.x, data.y, data.z);
       }
     }
+
+    // Victory screen
+    if (data.type === 'victory') {
+      UI.showVictoryScreen(data.stats || {});
+    }
   });
 
   // ===== EVENT LISTENERS =====
@@ -1610,6 +1852,12 @@
 
   document.querySelector('.crafting-close').addEventListener('click', () => {
     UI.hideCrafting();
+  });
+
+  // Victory continue button
+  document.getElementById('victory-continue').addEventListener('click', () => {
+    UI.hideVictoryScreen();
+    console.log('[UI] Victory screen closed - player continues');
   });
 
   // Keyboard shortcuts

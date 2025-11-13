@@ -273,11 +273,68 @@ export default class TimeManager {
   private onCycleComplete() {
     console.log('[TimeManager] Cycle complete - advancing to next night');
 
+    const previousNight = GameManager.instance.gameState.currentNight;
+
     // Advance to next night
     GameManager.instance.advanceNight();
 
     const nextNight = GameManager.instance.gameState.currentNight;
     console.log(`[TimeManager] Starting night ${nextNight}`);
+
+    // Check for victory (completed Night 99)
+    if (previousNight === 99 && nextNight === 100) {
+      this.onVictory();
+    }
+  }
+
+  /**
+   * Handle victory condition (completed all 99 nights)
+   */
+  private onVictory() {
+    if (!this.world) return;
+
+    console.log('[TimeManager] VICTORY! Player completed all 99 nights!');
+
+    // Stop the time cycle
+    this.stop();
+
+    // Get game statistics from GameManager
+    const gameManager = GameManager.instance;
+    const stats = {
+      nightsSurvived: 99,
+      enemiesDefeated: gameManager.gameStats.enemiesDefeated,
+      resourcesGathered: gameManager.gameStats.resourcesGathered,
+      bossesDefeated: 5, // Fixed: 5 boss nights (10, 25, 50, 75, 99)
+      finalLevel: 1, // Will be populated from player data
+      timePlayed: gameManager.getPlayTime(),
+    };
+
+    // Broadcast victory to all players
+    const players = this.world.entityManager.getAllPlayerEntities();
+    for (const playerEntity of players) {
+      const player = (playerEntity as any).player;
+      if (player?.ui) {
+        // Update final level from player entity
+        const playerStats = { ...stats, finalLevel: (playerEntity as any).level || 1 };
+
+        player.ui.sendData({
+          type: 'victory',
+          stats: playerStats,
+        });
+      }
+    }
+
+    // Broadcast chat message
+    this.world.chatManager.sendBroadcastMessage('='.repeat(60), 'FFD700');
+    this.world.chatManager.sendBroadcastMessage('🎉🎉🎉 VICTORY ACHIEVED! 🎉🎉🎉', 'FFD700');
+    this.world.chatManager.sendBroadcastMessage('You survived all 99 nights in the forest!', 'FFD700');
+    this.world.chatManager.sendBroadcastMessage('='.repeat(60), 'FFD700');
+
+    // Play victory music
+    import('./AudioManager').then(({ default: AudioManager }) => {
+      // TODO: Add victory music track
+      AudioManager.instance.switchMusic('day'); // Use day music for now
+    });
   }
 
   /**

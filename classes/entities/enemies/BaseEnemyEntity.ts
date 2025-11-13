@@ -151,6 +151,9 @@ export default class BaseEnemyEntity extends Entity {
     this.isDead = true;
     console.log(`[BaseEnemyEntity] ${this.config.name} died`);
 
+    // Track enemy defeat for statistics
+    GameManager.instance.incrementEnemiesDefeated();
+
     // If this is a boss, broadcast defeat message
     if (this.isBoss) {
       this.broadcastBossDefeated();
