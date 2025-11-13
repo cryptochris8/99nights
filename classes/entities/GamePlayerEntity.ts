@@ -1,6 +1,7 @@
-import { DefaultPlayerEntity, DefaultPlayerEntityOptions, DefaultPlayerEntityController, BaseEntityControllerEvent } from 'hytopia';
+import { DefaultPlayerEntity, DefaultPlayerEntityOptions, DefaultPlayerEntityController, BaseEntityControllerEvent, EntityEvent, PlayerUIEvent } from 'hytopia';
 import { InventoryItem, PlayerData, GameEvents } from '../../types/gameTypes';
 import GameManager from '../managers/GameManager';
+import AudioManager from '../managers/AudioManager';
 
 /**
  * GamePlayerEntity
@@ -37,13 +38,47 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
   constructor(options: DefaultPlayerEntityOptions) {
     super(options);
     // DefaultPlayerEntity automatically sets up DefaultPlayerEntityController
+
+    // Setup spawn event
+    this.on(EntityEvent.SPAWN, async () => {
+      await this.onSpawnHandler();
+    });
+
+    // Setup despawn event
+    this.on(EntityEvent.DESPAWN, async () => {
+      await this.onDespawnHandler();
+    });
+
+    // Setup UI event listener (client → server communication)
+    this.player.ui.on(PlayerUIEvent.DATA, (payload) => {
+      const data = payload.data;
+
+      console.log(`[GamePlayerEntity] UI event received:`, data.type, data.data);
+
+      switch (data.type) {
+        case 'open_inventory':
+          this.sendInventoryToUI();
+          break;
+        case 'open_crafting':
+          this.sendCraftingToUI();
+          break;
+        case 'craft':
+          // Handle craft request from UI
+          if (data.data && data.data.recipeId) {
+            import('../managers/CraftingManager').then(({ default: CraftingManager }) => {
+              CraftingManager.instance.tryCraft(this, data.data.recipeId);
+            });
+          }
+          break;
+      }
+    });
   }
 
   /**
-   * Called when player entity spawns
+   * Handler when player entity spawns
    */
-  async onSpawn() {
-    await super.onSpawn();
+  private async onSpawnHandler() {
+    if (!this.world) return;
 
     // Load player data from persistence
     await this.loadPlayerData();
@@ -57,28 +92,25 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     // Send initial UI update
     this.updateUI();
+    this.sendGameInfoToUI();
 
     // Welcome message
     this.world.chatManager.sendPlayerMessage(
-      this,
+      this.player,
       `§eWelcome to 99 Nights in the Forest!`,
     );
     this.world.chatManager.sendPlayerMessage(
-      this,
+      this.player,
       `§7Type §f/help§7 for available commands.`,
     );
 
-    // Emit player spawn event
-    this.world.eventRouter.emit(GameEvents.PLAYER_SPAWN, {
-      player: this,
-      playerId: this.id,
-    });
+    console.log(`[GamePlayerEntity] Player ${this.player.username} spawned`);
   }
 
   /**
-   * Called when player entity despawns
+   * Handler when player entity despawns
    */
-  async onDespawn() {
+  private async onDespawnHandler() {
     // Stop regeneration
     if (this.healthRegenInterval) clearInterval(this.healthRegenInterval);
     if (this.staminaRegenInterval) clearInterval(this.staminaRegenInterval);
@@ -86,26 +118,23 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     // Save player data
     await this.savePlayerData();
 
-    await super.onDespawn();
+    console.log(`[GamePlayerEntity] Player ${this.player.username} despawned`);
   }
 
   /**
    * Load player data from persistence
    */
   private async loadPlayerData() {
-    const gameManager = GameManager.instance;
-    const savedData = await gameManager.persistenceManager.get<PlayerData>(
-      `player_${this.id}`,
-    );
+    const savedData = await this.player.getPersistedData() as unknown as PlayerData | undefined;
 
-    if (savedData) {
+    if (savedData && savedData.playerId) {
       this.health = savedData.health;
       this.stamina = savedData.stamina;
       this.level = savedData.level;
       this.xp = savedData.xp;
       this.inventory = savedData.inventory;
       this.runes = savedData.runes;
-      console.log(`[GamePlayerEntity] Loaded data for player ${this.id}`);
+      console.log(`[GamePlayerEntity] Loaded data for player ${this.player.username}`);
     } else {
       // New player - initialize with starting items
       this.initializeNewPlayer();
@@ -116,9 +145,8 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
    * Save player data to persistence
    */
   public async savePlayerData() {
-    const gameManager = GameManager.instance;
     const playerData: PlayerData = {
-      playerId: this.id,
+      playerId: this.player.id,
       inventory: this.inventory,
       runes: this.runes,
       level: this.level,
@@ -127,8 +155,8 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       stamina: this.stamina,
     };
 
-    await gameManager.persistenceManager.set(`player_${this.id}`, playerData);
-    console.log(`[GamePlayerEntity] Saved data for player ${this.id}`);
+    await this.player.setPersistedData(playerData as any);
+    console.log(`[GamePlayerEntity] Saved data for player ${this.player.username}`);
   }
 
   /**
@@ -287,18 +315,19 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this.stamina = this.maxStamina;
 
     this.world.chatManager.sendPlayerMessage(
-      this,
+      this.player,
       `§6✨ Level Up! You are now level ${this.level}!`,
     );
 
     // Update UI with new stats
     this.updateUI();
 
-    // Emit level up event
-    this.world.eventRouter.emit(GameEvents.PLAYER_LEVEL_UP, {
-      player: this,
-      level: this.level,
-    });
+    // Emit level up event (Note: world.eventRouter doesn't exist in SDK 0.11.x)
+    // Custom event system would need to be implemented
+    // this.world.eventRouter.emit(GameEvents.PLAYER_LEVEL_UP, {
+    //   player: this,
+    //   level: this.level,
+    // });
   }
 
   /**
@@ -322,6 +351,53 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
   }
 
   /**
+   * Use a consumable item from inventory
+   */
+  public useItem(itemId: string): boolean {
+    if (!this.world) return false;
+
+    const gameManager = GameManager.instance;
+    const itemConfig = gameManager.itemsConfig[itemId];
+
+    if (!itemConfig) {
+      this.world.chatManager.sendPlayerMessage(this.player, `§cUnknown item: ${itemId}`);
+      return false;
+    }
+
+    // Check if player has the item
+    if (!this.hasItems(itemId, 1)) {
+      this.world.chatManager.sendPlayerMessage(this.player, `§cYou don't have any ${itemConfig.name}!`);
+      return false;
+    }
+
+    // Check if item is consumable
+    if (itemConfig.type !== 'consumable') {
+      this.world.chatManager.sendPlayerMessage(this.player, `§c${itemConfig.name} is not consumable!`);
+      return false;
+    }
+
+    // Apply item effects based on itemId
+    switch (itemId) {
+      case 'healing_potion':
+        this.heal(30); // Restore 30 HP
+        this.world.chatManager.sendPlayerMessage(this.player, `§a+30 HP! Used ${itemConfig.name}`);
+        AudioManager.instance.playSFX('audio/sfx/ui/notification-1.mp3', 0.5);
+        break;
+
+      // Add more consumable effects here as needed
+      default:
+        this.world.chatManager.sendPlayerMessage(this.player, `§c${itemConfig.name} has no effect!`);
+        return false;
+    }
+
+    // Remove item from inventory
+    this.removeItemFromInventory(itemId, 1);
+
+    console.log(`[GamePlayerEntity] Player ${this.player.username} used ${itemId}`);
+    return true;
+  }
+
+  /**
    * Use stamina
    */
   public useStamina(amount: number): boolean {
@@ -337,16 +413,42 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
    * Handle player death
    */
   private die() {
-    this.world.chatManager.sendPlayerMessage(this, `§cYou have died!`);
+    console.log(`[GamePlayerEntity] Player ${this.player.username} died`);
 
-    // Emit death event
-    this.world.eventRouter.emit(GameEvents.PLAYER_DEATH, {
-      player: this,
-      playerId: this.id,
-    });
+    // Death announcement
+    this.world.chatManager.sendBroadcastMessage(
+      `💀 ${this.player.username} has died!`,
+      'FF0000'
+    );
 
-    // Respawn logic (handled by Hytopia)
-    // Player will respawn at spawn point automatically
+    // Show death screen UI
+    this.showDeathScreen(5);
+
+    // Play death sound
+    AudioManager.instance.playSFX('audio/sfx/entity/zombie/zombie-death.mp3', 0.7, this.position);
+
+    // Respawn after delay
+    setTimeout(() => {
+      if (this.world) {
+        // Restore health
+        this.health = this.maxHealth;
+        this.stamina = this.maxStamina;
+
+        // Teleport to spawn
+        this.setPosition({ x: 0, y: 10, z: 0 });
+
+        // Update UI
+        this.updateUI();
+
+        // Send respawn notification
+        this.sendNotification('Respawned', 'You have respawned at the Safe Clearing!', 'success');
+
+        console.log(`[GamePlayerEntity] Player ${this.player.username} respawned`);
+      }
+    }, 5000); // 5 second respawn delay
+
+    // Optional: Drop some items on death (penalty)
+    // For now, players keep their inventory on death
   }
 
   /**
@@ -355,7 +457,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
   public equipRune(runeId: string): boolean {
     if (this.runes.length >= this.MAX_RUNE_SLOTS) {
       this.world.chatManager.sendPlayerMessage(
-        this,
+        this.player,
         `§cRune slots full! Unequip a rune first.`,
       );
       return false;
@@ -363,7 +465,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     if (this.runes.includes(runeId)) {
       this.world.chatManager.sendPlayerMessage(
-        this,
+        this.player,
         `§cRune already equipped!`,
       );
       return false;
@@ -371,7 +473,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     this.runes.push(runeId);
     this.world.chatManager.sendPlayerMessage(
-      this,
+      this.player,
       `§aEquipped rune: ${runeId}`,
     );
     return true;
@@ -384,7 +486,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     const index = this.runes.indexOf(runeId);
     if (index === -1) {
       this.world.chatManager.sendPlayerMessage(
-        this,
+        this.player,
         `§cRune not equipped!`,
       );
       return false;
@@ -392,7 +494,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     this.runes.splice(index, 1);
     this.world.chatManager.sendPlayerMessage(
-      this,
+      this.player,
       `§7Unequipped rune: ${runeId}`,
     );
     return true;
@@ -426,10 +528,10 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
         this.performClickAttack();
       }
 
-      // Right mouse click - place structure (if holding placeable item)
+      // Right mouse click - interact with resource OR place structure
       if (input.mr) {
         input.mr = false;
-        this.attemptStructurePlacement();
+        this.handleRightClick();
       }
     });
   }
@@ -441,7 +543,11 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     if (!this.world) return;
 
     // Get camera position and facing direction
-    const origin = this.getCameraPosition();
+    const origin = {
+      x: this.position.x,
+      y: this.position.y + 1.6, // Approximate eye height
+      z: this.position.z,
+    };
     const direction = this.player.camera.facingDirection;
     const range = 8; // Attack range in blocks
 
@@ -452,13 +558,13 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     if (!hit || !hit.hitEntity) {
       // Missed - no entity hit
-      this.world.chatManager.sendPlayerMessage(this, '§7*swing*');
+      this.world.chatManager.sendPlayerMessage(this.player, '§7*swing*');
       return;
     }
 
     // Check if hit entity is an enemy
     const target = hit.hitEntity as any;
-    if (typeof target.takeDamage !== 'function' || !target.hasTag('enemy')) {
+    if (typeof target.takeDamage !== 'function' || !target.tag || target.tag !== 'enemy') {
       // Hit something, but not an enemy
       return;
     }
@@ -471,7 +577,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     // Visual/audio feedback
     this.world.chatManager.sendPlayerMessage(
-      this,
+      this.player,
       `§c⚔ Hit ${target.name} for ${damage} damage!`
     );
 
@@ -526,13 +632,53 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
   }
 
   /**
+   * Handle right-click: gather resources or place structures
+   */
+  private handleRightClick() {
+    if (!this.world) return;
+
+    // Get camera position and facing direction
+    const origin = {
+      x: this.position.x,
+      y: this.position.y + 1.6, // Approximate eye height
+      z: this.position.z,
+    };
+    const direction = this.player.camera.facingDirection;
+    const range = 6; // Interaction range
+
+    // Perform raycast to find what the player is looking at
+    const hit = this.world.simulation.raycast(origin, direction, range, {
+      filterExcludeRigidBody: this.rawRigidBody,
+    });
+
+    // Check if we hit a resource node
+    if (hit && hit.hitEntity) {
+      const target = hit.hitEntity as any;
+
+      // Check if it's a resource node (has tag 'resource' and interact method)
+      if (target.tag === 'resource' && typeof target.interact === 'function') {
+        // Interact with the resource (gather it)
+        target.interact(this.player);
+        return;
+      }
+    }
+
+    // Not a resource, try to place a structure instead
+    this.attemptStructurePlacement();
+  }
+
+  /**
    * Attempt to place a structure at the player's target location
    */
   private attemptStructurePlacement() {
     if (!this.world) return;
 
     // Get camera position and facing direction
-    const origin = this.getCameraPosition();
+    const origin = {
+      x: this.position.x,
+      y: this.position.y + 1.6, // Approximate eye height
+      z: this.position.z,
+    };
     const direction = this.player.camera.facingDirection;
     const range = 6; // Placement range
 
@@ -542,13 +688,18 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     });
 
     if (!hit || !hit.hitBlock) {
-      this.world.chatManager.sendPlayerMessage(this, '§7No valid placement location.');
+      this.world.chatManager.sendPlayerMessage(this.player, '§7No valid placement location.');
       return;
     }
 
     // Get the placement coordinate (on top of the hit block)
     const placementCoordinate = hit.hitBlock.getNeighborGlobalCoordinateFromHitPoint(hit.hitPoint);
-    const placementPosition = this.world.chunkLattice.getBlockGlobalPosition(placementCoordinate);
+    // Convert coordinate to world position
+    const placementPosition = {
+      x: placementCoordinate.x,
+      y: placementCoordinate.y,
+      z: placementCoordinate.z,
+    };
 
     // Check inventory for placeable items
     const placeableItems = ['campfire', 'torch', 'ward_totem_t1'];
@@ -563,7 +714,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     if (!itemToPlace) {
       this.world.chatManager.sendPlayerMessage(
-        this,
+        this.player,
         '§cNo placeable structures in inventory. Craft a campfire, torch, or ward totem!'
       );
       return;
@@ -581,7 +732,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
     // Remove item from inventory
     if (!this.removeItemFromInventory(itemId, 1)) {
-      this.world.chatManager.sendPlayerMessage(this, '§cFailed to remove item from inventory.');
+      this.world.chatManager.sendPlayerMessage(this.player, '§cFailed to remove item from inventory.');
       return;
     }
 
@@ -591,15 +742,15 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     try {
       if (itemId === 'campfire') {
         const { default: CampfireEntity } = await import('./structures/CampfireEntity');
-        structure = new CampfireEntity({ placedBy: this.id });
+        structure = new CampfireEntity({ placedBy: String(this.id) });
       } else if (itemId === 'torch') {
         const { default: TorchEntity } = await import('./structures/TorchEntity');
-        structure = new TorchEntity({ placedBy: this.id });
+        structure = new TorchEntity({ placedBy: String(this.id) });
       } else if (itemId === 'ward_totem_t1') {
         const { default: WardTotemEntity } = await import('./structures/WardTotemEntity');
-        structure = new WardTotemEntity({ placedBy: this.id, tier: 1 });
+        structure = new WardTotemEntity({ placedBy: String(this.id), tier: 1 });
       } else {
-        this.world.chatManager.sendPlayerMessage(this, `§cUnknown structure: ${itemId}`);
+        this.world.chatManager.sendPlayerMessage(this.player, `§cUnknown structure: ${itemId}`);
         // Refund the item
         this.addItemToInventory(itemId, 1);
         return;
@@ -609,14 +760,14 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       structure.spawn(this.world, position);
 
       this.world.chatManager.sendPlayerMessage(
-        this,
+        this.player,
         `§aPlaced ${structure.structureName}!`
       );
 
       console.log(`[GamePlayerEntity] Player ${this.id} placed ${itemId} at ${JSON.stringify(position)}`);
     } catch (error) {
       console.error(`[GamePlayerEntity] Failed to place structure ${itemId}:`, error);
-      this.world.chatManager.sendPlayerMessage(this, `§cFailed to place structure.`);
+      this.world.chatManager.sendPlayerMessage(this.player, `§cFailed to place structure.`);
       // Refund the item
       this.addItemToInventory(itemId, 1);
     }
@@ -640,6 +791,158 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       xp: this.xp,
       xpForNext: xpForNextLevel,
       inventorySlots: this.inventory.length,
+    });
+
+    // Also update hotbar
+    this.updateHotbar();
+  }
+
+  /**
+   * Send hotbar data to UI (first 8 inventory slots)
+   */
+  public updateHotbar() {
+    if (!this.player?.ui) return;
+
+    const gameManager = GameManager.instance;
+    const hotbarItems = [];
+
+    for (let i = 0; i < 8; i++) {
+      const slot = this.inventory[i];
+      if (slot && slot.itemId) {
+        const itemConfig = gameManager.itemsConfig[slot.itemId];
+        hotbarItems.push({
+          id: slot.itemId,
+          name: itemConfig?.name || slot.itemId,
+          quantity: slot.quantity,
+        });
+      } else {
+        hotbarItems.push(null);
+      }
+    }
+
+    this.player.ui.sendData({
+      type: 'hotbar',
+      items: hotbarItems,
+    });
+  }
+
+  /**
+   * Send full inventory data to UI
+   */
+  public sendInventoryToUI() {
+    if (!this.player?.ui) return;
+
+    console.log(`[GamePlayerEntity] Sending inventory to UI for ${this.player.username}`);
+
+    const gameManager = GameManager.instance;
+    const inventoryData = this.inventory.map(slot => {
+      const itemConfig = gameManager.itemsConfig[slot.itemId];
+      return {
+        id: slot.itemId,
+        name: itemConfig?.name || slot.itemId,
+        description: itemConfig?.description || '',
+        type: itemConfig?.type || 'unknown',
+        quantity: slot.quantity,
+      };
+    });
+
+    console.log(`[GamePlayerEntity] Inventory data:`, inventoryData.length, 'items');
+
+    this.player.ui.sendData({
+      type: 'inventory',
+      items: inventoryData,
+    });
+
+    // Also show the inventory panel
+    console.log('[GamePlayerEntity] Sending show_inventory command');
+    this.player.ui.sendData({
+      type: 'show_inventory',
+    });
+  }
+
+  /**
+   * Send notification to player
+   */
+  public sendNotification(title: string, message: string, notifType: string = 'info', duration: number = 5000) {
+    if (!this.player?.ui) return;
+
+    this.player.ui.sendData({
+      type: 'notification',
+      title,
+      message,
+      notifType,
+      duration,
+    });
+  }
+
+  /**
+   * Show death screen
+   */
+  public showDeathScreen(respawnTime: number = 5) {
+    if (!this.player?.ui) return;
+
+    this.player.ui.sendData({
+      type: 'death',
+      respawnTime,
+    });
+  }
+
+  /**
+   * Send game info (night, phase) to UI
+   */
+  public sendGameInfoToUI() {
+    if (!this.player?.ui) return;
+
+    const gameManager = GameManager.instance;
+    this.player.ui.sendData({
+      type: 'game_info',
+      night: gameManager.gameState.currentNight,
+      phase: gameManager.gameState.currentPhase,
+      inventorySlots: this.inventory.length,
+    });
+  }
+
+  /**
+   * Send crafting recipes to UI
+   */
+  public sendCraftingToUI() {
+    if (!this.player?.ui) return;
+
+    const gameManager = GameManager.instance;
+    const craftingManager = import('../managers/CraftingManager').then(({ default: CraftingManager }) => {
+      // Get all recipes and check which ones can be crafted
+      const recipes = Object.entries(gameManager.recipesConfig).map(([recipeId, recipeConfig]: [string, any]) => {
+        const requirements = Object.entries(recipeConfig.requires || {}).map(([itemId, quantity]: [string, any]) => {
+          const itemConfig = gameManager.itemsConfig[itemId];
+          const hasQuantity = this.getItemCount(itemId);
+          return {
+            id: itemId,
+            name: itemConfig?.name || itemId,
+            needed: quantity,
+            current: hasQuantity,
+            has: hasQuantity >= quantity,
+          };
+        });
+
+        const canCraft = requirements.every(req => req.has);
+
+        return {
+          result: recipeId,
+          name: gameManager.itemsConfig[recipeId]?.name || recipeId,
+          requirements,
+          canCraft,
+        };
+      });
+
+      this.player.ui.sendData({
+        type: 'recipes',
+        recipes,
+      });
+
+      // Also show the crafting panel
+      this.player.ui.sendData({
+        type: 'show_crafting',
+      });
     });
   }
 }

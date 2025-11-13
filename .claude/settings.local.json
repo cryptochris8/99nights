@@ -34,7 +34,9 @@
       "Bash(if exist nul del nul)",
       "Bash(rm:*)",
       "Bash(powershell -Command \"if (Test-Path nul) { Remove-Item nul -Force }\")",
+      "Bash(git cherry-pick:*)",
       "Bash(git pull:*)",
+      "Bash(git stash:*)",
       "mcp__hytopia-mcp__listDocumentation",
       "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Killed all node processes''\")"
     ]
