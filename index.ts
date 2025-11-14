@@ -80,7 +80,7 @@ startServer(async (world) => {
       player,
       name: player.username,
       // modelUri removed - using default player model to avoid optimization issues
-      modelScale: 0.5, // Hytopia standard (~1.5 blocks tall)
+      // Default modelScale is 1.0 which gives proper player height (~1.5-1.8 blocks tall)
     });
 
     // Spawn at the Safe Clearing (0, 10, 0)
@@ -88,7 +88,8 @@ startServer(async (world) => {
 
     // Setup third-person camera (default mode)
     // Camera offset positions the view at upper body/head level
-    player.camera.setOffset({ x: 0, y: 0.8, z: 0 });
+    // With default player scale (1.0), proper offset is around 1.2-1.5
+    player.camera.setOffset({ x: 0, y: 1.3, z: 0 });
 
     // Load game UI (path is relative to assets/ directory)
     player.ui.load('ui/index.html');
