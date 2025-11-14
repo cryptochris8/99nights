@@ -12,6 +12,6 @@
   "type": "commonjs",
   "dependencies": {
     "@hytopia.com/assets": "^0.4.2",
-    "hytopia": "^0.11.1"
+    "hytopia": "^0.11.9"
   }
 }

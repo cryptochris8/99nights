@@ -26,8 +26,8 @@ import ResourceManager from './classes/managers/ResourceManager';
 
 // Model optimization is enabled by default for better performance
 // The SDK automatically optimizes models from @hytopia.com/assets
-// Uncomment the line below ONLY if you experience issues with optimized models:
-// ModelRegistry.instance.optimize = false;
+// Re-enabled after updating to SDK 0.11.9 and fixing model paths
+ModelRegistry.instance.optimize = true;
 
 /**
  * Main server entry point
