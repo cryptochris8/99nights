@@ -121,11 +121,8 @@ export default class CraftingManager {
       timeoutId,
     });
 
-    // Emit crafting started event
-    this.world.eventRouter.emit(GameEvents.CRAFT_START, {
-      player,
-      recipeId,
-    });
+    // TODO: Add custom event system if needed
+    // Previously used this.world.eventRouter.emit() which doesn't exist in SDK 0.11.9
 
     return true;
   }
@@ -171,13 +168,8 @@ export default class CraftingManager {
     // Grant XP
     player.addXP(10);
 
-    // Emit crafting completed event
-    this.world.eventRouter.emit(GameEvents.CRAFT_COMPLETE, {
-      player,
-      recipeId,
-      itemId: recipe.output.itemId,
-      quantity: recipe.output.quantity,
-    });
+    // TODO: Add custom event system if needed
+    // Previously used this.world.eventRouter.emit() which doesn't exist in SDK 0.11.9
   }
 
   /**
