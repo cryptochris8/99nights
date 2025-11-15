@@ -99,7 +99,7 @@ export default class AudioManager {
    */
   public stop() {
     if (this.currentMusic) {
-      this.currentMusic.stop();
+      this.currentMusic.pause();
       this.currentMusic = undefined;
     }
 
@@ -121,7 +121,7 @@ export default class AudioManager {
 
     // Stop current music
     if (this.currentMusic) {
-      this.currentMusic.stop();
+      this.currentMusic.pause();
     }
 
     // Start new music

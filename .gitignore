@@ -3,3 +3,11 @@ dist/
 *.log
 .env
 .DS_Store
+
+# Compiled JavaScript files (keep only TypeScript source)
+*.js
+*.mjs
+*.js.map
+
+# Keep specific JS files if needed (uncomment as necessary)
+# !some-config.js

@@ -1,4 +1,4 @@
-import { BaseEntityController, Entity, Vector3Like } from 'hytopia';
+import { BaseEntityController, Entity, Vector3Like, Quaternion } from 'hytopia';
 import type BaseEnemyEntity from '../entities/enemies/BaseEnemyEntity';
 import type GamePlayerEntity from '../entities/GamePlayerEntity';
 
@@ -9,6 +9,9 @@ import type GamePlayerEntity from '../entities/GamePlayerEntity';
  * Handles chase behavior, attacking, and movement toward players.
  */
 export default class EnemyController extends BaseEntityController {
+  // BaseEntityController provides this.entity, but TypeScript needs it declared
+  public entity!: Entity;
+
   private enemy: BaseEnemyEntity;
   private targetPlayer: GamePlayerEntity | undefined;
   private updateInterval: NodeJS.Timeout | undefined;
@@ -119,20 +122,17 @@ export default class EnemyController extends BaseEntityController {
     const speed = this.enemy.config.speed;
     const velocity: Vector3Like = {
       x: dirX * speed,
-      y: this.entity.velocity.y, // Preserve vertical velocity (gravity)
+      y: this.entity.linearVelocity.y, // Preserve vertical velocity (gravity)
       z: dirZ * speed,
     };
 
     // Apply velocity
-    this.entity.setVelocity(velocity);
+    this.entity.setLinearVelocity(velocity);
 
     // Rotate to face target
     const angle = Math.atan2(dirZ, dirX);
-    this.entity.setRotation({
-      x: 0,
-      y: angle - Math.PI / 2, // Adjust for model orientation
-      z: 0,
-    });
+    const yawDegrees = (angle - Math.PI / 2) * (180 / Math.PI); // Convert to degrees and adjust for model orientation
+    this.entity.setRotation(Quaternion.fromEuler(0, yawDegrees, 0));
   }
 
   /**

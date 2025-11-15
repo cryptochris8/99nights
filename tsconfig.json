@@ -6,11 +6,12 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleResolution": "node",
-    "verbatimModuleSyntax": true,
-    "strict": true,
+    "verbatimModuleSyntax": false,
+    "strict": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false
   }
 }

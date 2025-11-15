@@ -102,7 +102,7 @@ export default class InventoryManager {
     // Check if from player has items
     if (!fromPlayer.hasItems(itemId, quantity)) {
       this.world.chatManager.sendPlayerMessage(
-        fromPlayer,
+        fromPlayer.player,
         `§cYou don't have enough ${itemId}.`,
       );
       return false;
@@ -120,7 +120,7 @@ export default class InventoryManager {
     const added = toPlayer.addItemToInventory(itemId, quantity);
     if (!added) {
       this.world.chatManager.sendPlayerMessage(
-        fromPlayer,
+        fromPlayer.player,
         `§c${toPlayer.name}'s inventory is full!`,
       );
       return false;
@@ -132,11 +132,11 @@ export default class InventoryManager {
     // Send messages
     const itemName = itemConfig.name;
     this.world.chatManager.sendPlayerMessage(
-      fromPlayer,
+      fromPlayer.player,
       `§aGave ${quantity}x ${itemName} to ${toPlayer.name}.`,
     );
     this.world.chatManager.sendPlayerMessage(
-      toPlayer,
+      toPlayer.player,
       `§aReceived ${quantity}x ${itemName} from ${fromPlayer.name}.`,
     );
 
@@ -153,7 +153,7 @@ export default class InventoryManager {
   ): boolean {
     if (!player.hasItems(itemId, quantity)) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cYou don't have enough ${itemId}.`,
       );
       return false;
@@ -167,7 +167,7 @@ export default class InventoryManager {
     const itemName = itemConfig?.name || itemId;
 
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§7Dropped ${quantity}x ${itemName}.`,
     );
 
@@ -209,7 +209,7 @@ export default class InventoryManager {
       return a.itemId.localeCompare(b.itemId);
     });
 
-    this.world.chatManager.sendPlayerMessage(player, `§aInventory sorted.`);
+    this.world.chatManager.sendPlayerMessage(player.player, `§aInventory sorted.`);
   }
 
   /**
@@ -233,7 +233,7 @@ export default class InventoryManager {
       player.addItemToInventory(itemId, quantity);
     }
 
-    this.world.chatManager.sendPlayerMessage(player, `§aInventory stacked.`);
+    this.world.chatManager.sendPlayerMessage(player.player, `§aInventory stacked.`);
   }
 
   /**
@@ -308,7 +308,7 @@ export default class InventoryManager {
   public clearInventory(player: GamePlayerEntity) {
     player.inventory = [];
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§cInventory cleared.`,
     );
   }

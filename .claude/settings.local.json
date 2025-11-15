@@ -38,7 +38,16 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "mcp__hytopia-mcp__listDocumentation",
-      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Killed all node processes''\")"
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Killed all node processes''\")",
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''node_modules\\@hytopia.com\\assets'' -Recurse -File | Select-Object -First 100 FullName\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''node_modules\\@hytopia.com\\assets\\models'' -Recurse -Directory | Select-Object FullName\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''node_modules\\@hytopia.com\\assets\\models\\npcs'' -Recurse -File | Select-Object Name\")",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout 20 hytopia start:*)",
+      "Bash(npm view:*)",
+      "Bash(Copy-Item \"assets\\ui\\index.html\" \"assets\\ui\\index_OLD.html\")",
+      "Bash(npm run build:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

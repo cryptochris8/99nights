@@ -1,7 +1,7 @@
 import { Entity, EntityOptions, EntityEvent, RigidBodyType, Collider, ColliderShape } from 'hytopia';
 import GamePlayerEntity from '../GamePlayerEntity';
 
-export interface BaseResourceEntityOptions extends EntityOptions {
+export type BaseResourceEntityOptions = EntityOptions & {
   resourceId: string;
   resourceName: string;
   minYield: number;
@@ -31,8 +31,9 @@ export default class BaseResourceEntity extends Entity {
   constructor(options: BaseResourceEntityOptions) {
     super({
       ...options,
+      tag: 'resource', // Set primary tag in constructor
       rigidBodyOptions: {
-        type: RigidBodyType.STATIC,
+        type: RigidBodyType.FIXED,
         colliders: [
           { shape: ColliderShape.BALL, radius: 0.8 },
         ],
@@ -45,61 +46,59 @@ export default class BaseResourceEntity extends Entity {
     this.maxYield = options.maxYield;
     this.respawnTime = options.respawnTime ?? 60000; // Default 1 minute
     this.harvestDuration = options.harvestDuration ?? 2000; // Default 2 seconds
-  }
 
-  async onSpawn() {
-    await super.onSpawn();
+    // Setup spawn event listener
+    this.on(EntityEvent.SPAWN, () => {
+      // Note: INTERACT event may not exist in SDK 0.10.46
+      // Interaction will need to be handled differently (e.g., proximity detection)
+      console.log(`[BaseResourceEntity] ${this.resourceName} spawned`);
+    });
 
-    // Add tags after spawning
-    this.addTag('resource');
-    this.addTag(`resource_${this.resourceId}`);
-
-    // Listen for entity interactions
-    this.on(EntityEvent.INTERACT, this.onInteract.bind(this));
+    // Setup despawn event listener
+    this.on(EntityEvent.DESPAWN, () => {
+      this.cancelHarvest();
+    });
   }
 
   /**
-   * Handle player interaction
+   * Handle player interaction (public method to be called from external systems)
    */
-  private onInteract(payload: any) {
-    const { interactor } = payload;
-
-    // Check if interactor is a player
-    if (!(interactor instanceof GamePlayerEntity)) {
-      return;
-    }
+  public onInteract(player: GamePlayerEntity) {
+    if (!this.world) return;
 
     // Check if already depleted
     if (this.isDepleted) {
       this.world.chatManager.sendPlayerMessage(
-        interactor,
+        player.player,
         `§7This ${this.resourceName} has been depleted. Wait for it to respawn.`
       );
       return;
     }
 
     // Check if someone is already harvesting
-    if (this.currentHarvester && this.currentHarvester !== interactor) {
+    if (this.currentHarvester && this.currentHarvester !== player) {
       this.world.chatManager.sendPlayerMessage(
-        interactor,
+        player.player,
         `§7Someone is already gathering from this ${this.resourceName}.`
       );
       return;
     }
 
     // Start harvesting
-    this.startHarvesting(interactor);
+    this.startHarvesting(player);
   }
 
   /**
    * Start harvesting process
    */
   private startHarvesting(player: GamePlayerEntity) {
+    if (!this.world) return;
+
     this.currentHarvester = player;
 
     // Send harvest start message
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§eGathering ${this.resourceName}...`
     );
 
@@ -113,6 +112,8 @@ export default class BaseResourceEntity extends Entity {
    * Complete the harvest and give items to player
    */
   private completeHarvest(player: GamePlayerEntity) {
+    if (!this.world) return;
+
     // Calculate yield
     const yield_ = Math.floor(
       Math.random() * (this.maxYield - this.minYield + 1) + this.minYield
@@ -123,7 +124,7 @@ export default class BaseResourceEntity extends Entity {
 
     if (success) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§a+${yield_} ${this.resourceName}!`
       );
 
@@ -131,7 +132,7 @@ export default class BaseResourceEntity extends Entity {
       this.deplete();
     } else {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cInventory full! Could not gather ${this.resourceName}.`
       );
     }
@@ -146,7 +147,7 @@ export default class BaseResourceEntity extends Entity {
     this.isDepleted = true;
 
     // Visual feedback - make model semi-transparent
-    this.setModelTintColor({ r: 0.5, g: 0.5, b: 0.5, a: 0.5 });
+    this.setTintColor({ r: 128, g: 128, b: 128 });
 
     // Schedule respawn
     setTimeout(() => {
@@ -158,19 +159,23 @@ export default class BaseResourceEntity extends Entity {
    * Respawn the resource
    */
   private respawn() {
+    if (!this.world) return;
+
     this.isDepleted = false;
 
     // Restore visual
-    this.setModelTintColor({ r: 1, g: 1, b: 1, a: 1 });
+    this.setTintColor({ r: 255, g: 255, b: 255 });
 
     // Broadcast respawn message to nearby players
-    const nearbyPlayers = this.world.entityManager
-      .getEntitiesByClass(GamePlayerEntity as any)
-      .filter((player) => this.distanceTo(player.position) < 20);
+    const allPlayerEntities = this.world.entityManager.getAllPlayerEntities();
+    const nearbyPlayers = allPlayerEntities.filter(
+      (playerEntity) => this.distanceTo(playerEntity.position) < 20
+    );
 
-    for (const player of nearbyPlayers) {
+    for (const playerEntity of nearbyPlayers) {
+      const gamePlayer = playerEntity as GamePlayerEntity;
       this.world.chatManager.sendPlayerMessage(
-        player as GamePlayerEntity,
+        gamePlayer.player,
         `§7A ${this.resourceName} has respawned nearby.`
       );
     }
@@ -190,6 +195,8 @@ export default class BaseResourceEntity extends Entity {
    * Cancel ongoing harvest (e.g., if player moves away)
    */
   public cancelHarvest() {
+    if (!this.world) return;
+
     if (this.harvestTimeout) {
       clearTimeout(this.harvestTimeout);
       this.harvestTimeout = undefined;
@@ -197,17 +204,10 @@ export default class BaseResourceEntity extends Entity {
 
     if (this.currentHarvester) {
       this.world.chatManager.sendPlayerMessage(
-        this.currentHarvester,
+        this.currentHarvester.player,
         `§7Harvest cancelled.`
       );
       this.currentHarvester = undefined;
     }
-  }
-
-  async onDespawn() {
-    // Clean up any ongoing harvests
-    this.cancelHarvest();
-
-    await super.onDespawn();
   }
 }

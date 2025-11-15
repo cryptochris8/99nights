@@ -158,5 +158,85 @@
         "chance": 0.5
       }
     ]
+  },
+  "bat_loot": {
+    "id": "bat_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 1,
+        "maxQuantity": 2,
+        "chance": 0.4
+      },
+      {
+        "itemId": "wood",
+        "minQuantity": 1,
+        "maxQuantity": 2,
+        "chance": 0.3
+      }
+    ]
+  },
+  "skeleton_loot": {
+    "id": "skeleton_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 1,
+        "maxQuantity": 3,
+        "chance": 0.55
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 2,
+        "maxQuantity": 4,
+        "chance": 0.6
+      }
+    ]
+  },
+  "phantom_loot": {
+    "id": "phantom_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 3,
+        "maxQuantity": 6,
+        "chance": 0.75
+      },
+      {
+        "itemId": "herb_glowcap",
+        "minQuantity": 2,
+        "maxQuantity": 4,
+        "chance": 0.6
+      }
+    ]
+  },
+  "guardian_loot": {
+    "id": "guardian_loot",
+    "drops": [
+      {
+        "itemId": "rune_dust",
+        "minQuantity": 8,
+        "maxQuantity": 15,
+        "chance": 1.0
+      },
+      {
+        "itemId": "herb_glowcap",
+        "minQuantity": 5,
+        "maxQuantity": 8,
+        "chance": 0.9
+      },
+      {
+        "itemId": "stone",
+        "minQuantity": 8,
+        "maxQuantity": 15,
+        "chance": 0.8
+      },
+      {
+        "itemId": "wood",
+        "minQuantity": 10,
+        "maxQuantity": 20,
+        "chance": 0.7
+      }
+    ]
   }
 }

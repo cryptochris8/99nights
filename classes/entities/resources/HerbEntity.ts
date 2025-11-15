@@ -5,6 +5,8 @@ import BaseResourceEntity, { BaseResourceEntityOptions } from './BaseResourceEnt
  *
  * A glowing mushroom herb that players can gather.
  */
+import { EntityEvent } from 'hytopia';
+
 export default class HerbEntity extends BaseResourceEntity {
   constructor(options?: Partial<BaseResourceEntityOptions>) {
     super({
@@ -17,8 +19,12 @@ export default class HerbEntity extends BaseResourceEntity {
       maxYield: 3,
       respawnTime: 60000, // 1 minute
       harvestDuration: 1500, // 1.5 seconds to gather
-      modelTintColor: { r: 0.6, g: 1.0, b: 0.8, a: 1.0 }, // Glowing teal color
       ...options,
+    });
+
+    // Apply tint color after spawn (modelTintColor not in constructor options)
+    this.on(EntityEvent.SPAWN, () => {
+      this.setTintColor({ r: 153, g: 255, b: 204 }); // Glowing teal color (RGB 0-255)
     });
   }
 }

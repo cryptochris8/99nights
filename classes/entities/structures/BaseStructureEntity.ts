@@ -1,6 +1,6 @@
-import { Entity, EntityOptions, RigidBodyType, Collider, ColliderShape } from 'hytopia';
+import { Entity, EntityOptions, EntityEvent, RigidBodyType, Collider, ColliderShape } from 'hytopia';
 
-export interface BaseStructureEntityOptions extends EntityOptions {
+export type BaseStructureEntityOptions = EntityOptions & {
   structureId: string;
   structureName: string;
   placedBy?: string; // Player ID who placed it
@@ -19,10 +19,11 @@ export default class BaseStructureEntity extends Entity {
   constructor(options: BaseStructureEntityOptions) {
     super({
       ...options,
+      tag: 'structure', // Set primary tag in constructor
       rigidBodyOptions: {
-        type: RigidBodyType.STATIC,
+        type: RigidBodyType.FIXED,
         colliders: [
-          Collider.box(0.5, 1.0, 0.5),
+          { shape: ColliderShape.BLOCK, halfExtents: { x: 0.5, y: 1.0, z: 0.5 } },
         ],
       },
     });
@@ -31,14 +32,10 @@ export default class BaseStructureEntity extends Entity {
     this.structureName = options.structureName;
     this.placedBy = options.placedBy;
 
-    // Add tags for identification
-    this.addTag('structure');
-    this.addTag(`structure_${this.structureId}`);
-  }
-
-  async onSpawn() {
-    await super.onSpawn();
-    console.log(`[BaseStructureEntity] ${this.structureName} placed at ${JSON.stringify(this.position)}`);
+    // Setup spawn event listener
+    this.on(EntityEvent.SPAWN, () => {
+      console.log(`[BaseStructureEntity] ${this.structureName} placed at ${JSON.stringify(this.position)}`);
+    });
   }
 
   /**

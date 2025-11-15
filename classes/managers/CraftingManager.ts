@@ -63,16 +63,16 @@ export default class CraftingManager {
     // Validate recipe exists
     if (!recipe) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cUnknown recipe: ${recipeId}`,
       );
       return false;
     }
 
     // Check if player is already crafting
-    if (this.activeCrafts.has(player.id)) {
+    if (this.activeCrafts.has(String(player.id))) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cYou are already crafting something!`,
       );
       return false;
@@ -83,7 +83,7 @@ export default class CraftingManager {
     if (!inventoryManager.hasRecipeInputs(player, recipeId)) {
       const missing = inventoryManager.getMissingRecipeInputs(player, recipeId);
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cMissing items: ${missing.join(', ')}`,
       );
       return false;
@@ -103,7 +103,7 @@ export default class CraftingManager {
     const startTime = Date.now();
 
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§eCrafting ${recipe.output.quantity}x ${outputName}... (${craftTime / 1000}s)`,
     );
 
@@ -113,16 +113,19 @@ export default class CraftingManager {
     }, craftTime);
 
     // Store active craft
-    this.activeCrafts.set(player.id, {
-      playerId: player.id,
+    this.activeCrafts.set(String(player.id), {
+      playerId: String(player.id),
       recipeId,
       startTime,
       duration: craftTime,
       timeoutId,
     });
 
-    // TODO: Add custom event system if needed
-    // Previously used this.world.eventRouter.emit() which doesn't exist in SDK 0.11.9
+    // Emit crafting started event (eventRouter not available in SDK 0.11.x)
+    // this.world.eventRouter.emit(GameEvents.CRAFT_START, {
+    //   player,
+    //   recipeId,
+    // });
 
     return true;
   }
@@ -140,7 +143,7 @@ export default class CraftingManager {
     }
 
     // Remove from active crafts
-    this.activeCrafts.delete(player.id);
+    this.activeCrafts.delete(String(player.id));
 
     // Add output to inventory
     const added = player.addItemToInventory(
@@ -150,7 +153,7 @@ export default class CraftingManager {
 
     if (!added) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cInventory full! Crafted items were lost.`,
       );
       return;
@@ -161,26 +164,31 @@ export default class CraftingManager {
     const outputName = outputConfig?.name || recipe.output.itemId;
 
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§a✓ Crafted ${recipe.output.quantity}x ${outputName}!`,
     );
 
     // Grant XP
     player.addXP(10);
 
-    // TODO: Add custom event system if needed
-    // Previously used this.world.eventRouter.emit() which doesn't exist in SDK 0.11.9
+    // Emit crafting completed event (eventRouter not available in SDK 0.11.x)
+    // this.world.eventRouter.emit(GameEvents.CRAFT_COMPLETE, {
+    //   player,
+    //   recipeId,
+    //   itemId: recipe.output.itemId,
+    //   quantity: recipe.output.quantity,
+    // });
   }
 
   /**
    * Cancel active crafting job
    */
   public cancelCraft(player: GamePlayerEntity): boolean {
-    const craft = this.activeCrafts.get(player.id);
+    const craft = this.activeCrafts.get(String(player.id));
 
     if (!craft) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cYou are not crafting anything.`,
       );
       return false;
@@ -190,11 +198,11 @@ export default class CraftingManager {
     clearTimeout(craft.timeoutId);
 
     // Remove from active crafts
-    this.activeCrafts.delete(player.id);
+    this.activeCrafts.delete(String(player.id));
 
     // Note: We don't refund materials (materials were already consumed)
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§7Crafting cancelled. Materials were not refunded.`,
     );
 
@@ -205,7 +213,7 @@ export default class CraftingManager {
    * Get crafting progress for player
    */
   public getCraftProgress(player: GamePlayerEntity): string | null {
-    const craft = this.activeCrafts.get(player.id);
+    const craft = this.activeCrafts.get(String(player.id));
 
     if (!craft) {
       return null;
@@ -320,7 +328,7 @@ export default class CraftingManager {
 
     if (!recipe) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cUnknown recipe: ${recipeId}`,
       );
       return false;
@@ -330,7 +338,7 @@ export default class CraftingManager {
     if (!inventoryManager.hasRecipeInputs(player, recipeId)) {
       const missing = inventoryManager.getMissingRecipeInputs(player, recipeId);
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cMissing items: ${missing.join(', ')}`,
       );
       return false;
@@ -349,7 +357,7 @@ export default class CraftingManager {
 
     if (!added) {
       this.world.chatManager.sendPlayerMessage(
-        player,
+        player.player,
         `§cInventory full!`,
       );
       return false;
@@ -359,7 +367,7 @@ export default class CraftingManager {
     const outputName = outputConfig?.name || recipe.output.itemId;
 
     this.world.chatManager.sendPlayerMessage(
-      player,
+      player.player,
       `§a✓ Instantly crafted ${recipe.output.quantity}x ${outputName}!`,
     );
 

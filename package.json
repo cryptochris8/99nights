@@ -1,17 +1,20 @@
 {
   "name": "99-nights",
   "version": "1.0.0",
-  "description": "",
+  "description": "A mythic-cozy survival adventure - survive 99 nights in the cursed forest",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
+    "start": "hytopia start",
+    "dev": "tsc && hytopia start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["hytopia", "game", "survival"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@hytopia.com/assets": "^0.4.2",
-    "hytopia": "^0.11.9"
+    "hytopia": "0.11.2"
   }
 }

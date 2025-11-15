@@ -40,8 +40,13 @@ export default class ResourceManager {
 
     console.log('[ResourceManager] Spawning initial resources...');
 
+    // Spawn trees in a scattered pattern
     this.spawnTrees(15); // 15 trees
+
+    // Spawn rocks
     this.spawnRocks(10); // 10 rocks
+
+    // Spawn herbs (glowcap mushrooms)
     this.spawnHerbs(12); // 12 herbs
 
     console.log(`[ResourceManager] Spawned ${this.resourceEntities.size} total resources`);
@@ -54,10 +59,10 @@ export default class ResourceManager {
     if (!this.world) return;
 
     const treeModels = [
-      'models/environment/Plains/oak-tree-medium.gltf',
-      'models/environment/Plains/oak-tree-big.gltf',
       'models/environment/Pine Forest/pine-tree-medium.gltf',
       'models/environment/Pine Forest/pine-tree-small.gltf',
+      'models/environment/Plains/oak-tree-medium.gltf',
+      'models/environment/Plains/oak-tree-big.gltf',
     ];
 
     for (let i = 0; i < count; i++) {
@@ -210,7 +215,7 @@ export default class ResourceManager {
       case 'herb':
         config = {
           type: 'herb',
-          modelUri: 'models/environment/Plains/mushroom-purple-multiple.gltf',
+          modelUri: 'models/environment/mushroom-purple-multiple.gltf',
           itemId: 'herb_glowcap',
           itemName: 'Glowcap Mushroom',
           minYield: 1,
@@ -241,7 +246,7 @@ export default class ResourceManager {
 
     let count = 0;
     for (const resource of this.resourceEntities) {
-      if (resource.hasTag(`resource_${type}`)) {
+      if (resource.tag === `resource_${type}`) {
         count++;
       }
     }
