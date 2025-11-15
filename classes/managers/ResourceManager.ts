@@ -53,6 +53,28 @@ export default class ResourceManager {
   }
 
   /**
+   * Get terrain height at a position using raycast
+   */
+  private getTerrainHeight(x: number, z: number): number {
+    if (!this.world) return 10;
+
+    // Cast ray downward from high above to find terrain
+    const origin = { x, y: 100, z }; // Start from y=100
+    const direction = { x: 0, y: -1, z: 0 }; // Cast straight down
+    const length = 150; // Cast down 150 blocks
+
+    const hit = this.world.simulation.raycast(origin, direction, length);
+
+    if (hit?.hitBlock) {
+      // Return the block position + 1 to spawn on top of the ground
+      return hit.hitBlock.globalCoordinate.y + 1;
+    }
+
+    // Fallback if no terrain found
+    return 10;
+  }
+
+  /**
    * Spawn trees around the map
    */
   private spawnTrees(count: number) {
@@ -71,7 +93,9 @@ export default class ResourceManager {
       const radius = 20 + Math.random() * 40;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const y = 10; // Adjust based on your map height
+
+      // Get actual terrain height at this position
+      const y = this.getTerrainHeight(x, z);
 
       const config: ResourceNodeConfig = {
         type: 'tree',
@@ -111,7 +135,9 @@ export default class ResourceManager {
       const radius = 15 + Math.random() * 35;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const y = 10; // Adjust based on your map height
+
+      // Get actual terrain height at this position
+      const y = this.getTerrainHeight(x, z);
 
       const config: ResourceNodeConfig = {
         type: 'rock',
@@ -151,7 +177,9 @@ export default class ResourceManager {
       const radius = 10 + Math.random() * 30;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const y = 10; // Adjust based on your map height
+
+      // Get actual terrain height at this position
+      const y = this.getTerrainHeight(x, z);
 
       const config: ResourceNodeConfig = {
         type: 'herb',
